@@ -30,29 +30,30 @@ def chunk_text(documents):
     chunks = text_splitter.split_documents(documents)
     return chunks
 
-def store_in_pinecone(chunks, filename):
+def store_in_pinecone(chunks, filename, user_id):
     """
-    Embeds chunks and uploads them to Pinecone with metadata.
+    Embeds chunks and uploads them to Pinecone with metadata AND user_id.
     """
     index = pc.Index(INDEX_NAME)
     
     vectors = []
     
-    print(f"Embedding {len(chunks)} chunks for {filename}...")
+    print(f"Embedding {len(chunks)} chunks for {filename} (User: {user_id})...")
     
     for i, chunk in enumerate(chunks):
         # 1. Create Vector (Embedding)
         vector_values = embeddings.embed_query(chunk.page_content)
         
-        # 2. Prepare Metadata (Store the text inside the DB!)
+        # 2. Prepare Metadata (Store text + filename + user_id)
         metadata = {
             "text": chunk.page_content,
             "filename": filename,
-            "chunk_id": i
+            "chunk_id": i,
+            "user_id": user_id  # <--- SECURITY: Tag the owner
         }
         
-        # 3. Create ID
-        vector_id = f"{filename}_{i}"
+        # 3. Create Unique ID (Include user_id to avoid collisions if two users have "math.pdf")
+        vector_id = f"{user_id}_{filename}_{i}"
         
         vectors.append({
             "id": vector_id, 
@@ -69,24 +70,27 @@ def store_in_pinecone(chunks, filename):
     
     print("Upload complete.")
 
-def retrieve(question, filename=None, k=5):
+def retrieve(question, filename, user_id, k=5):
     """
     Queries Pinecone for relevant chunks.
-    If filename is provided, it filters results to only that book.
+    STRICTLY filters by user_id and filename.
     """
     index = pc.Index(INDEX_NAME)
     
     # 1. Embed the Question
     query_vector = embeddings.embed_query(question)
     
-    # 2. Define Filter (Optional: specific book only)
-    query_filter = {"filename": filename} if filename else None
+    # 2. Define Filter (Must match BOTH filename and user_id)
+    query_filter = {
+        "filename": filename,
+        "user_id": user_id # <--- SECURITY: Only search this user's data
+    }
     
     # 3. Query Pinecone
     results = index.query(
         vector=query_vector,
         top_k=k,
-        include_metadata=True, # Important: Get the text back!
+        include_metadata=True,
         filter=query_filter
     )
     
