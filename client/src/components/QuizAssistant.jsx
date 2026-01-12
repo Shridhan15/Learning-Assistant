@@ -9,12 +9,13 @@ import {
   Loader2,
 } from "lucide-react";
 
-const QuizAssistant = () => {
+// 1. ACCEPT PROPS FROM CLERK
+const QuizAssistant = ({ getToken, userId }) => {
   // --- STATE ---
-  const [step, setStep] = useState(1); // 1:Selection, 2:Topic, 3:Quiz, 4:Result
-  const [file, setFile] = useState(null); // Stores object: { name: "filename.pdf" }
+  const [step, setStep] = useState(1);
+  const [file, setFile] = useState(null);
   const [topic, setTopic] = useState("");
-  const [availableFiles, setAvailableFiles] = useState([]); // Library list
+  const [availableFiles, setAvailableFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -22,19 +23,31 @@ const QuizAssistant = () => {
   const [userAnswers, setUserAnswers] = useState({});
   const [score, setScore] = useState(0);
 
-  // --- CONFIGURATION ---
-  // If deployed, this uses the Vercel env var. If local, defaults to localhost.
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+  // --- HELPER: AUTHENTICATED FETCH ---
+  // This automatically adds your Token and User ID to requests
+  const authFetch = async (url, options = {}) => {
+    const token = await getToken();
+    const headers = {
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+      "user-id": userId,
+    };
+    return fetch(url, { ...options, headers });
+  };
+
   // --- INITIALIZATION ---
-  // Fetch the list of available PDFs when app loads
   useEffect(() => {
-    fetchFiles();
-  }, []);
+    if (userId) {
+      fetchFiles();
+    }
+  }, [userId]); // Only fetch when we have a user ID
 
   const fetchFiles = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/files`);
+      // 2. USE AUTH FETCH (GET /files)
+      const res = await authFetch(`${API_BASE_URL}/files`);
       const data = await res.json();
       setAvailableFiles(data.files || []);
     } catch (err) {
@@ -44,7 +57,7 @@ const QuizAssistant = () => {
 
   // --- HANDLERS ---
 
-  // 1. Upload NEW PDF
+  // 3. UPLOAD NEW PDF (Secure)
   const handleFileUpload = async (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
@@ -55,8 +68,16 @@ const QuizAssistant = () => {
     formData.append("file", selectedFile);
 
     try {
+      // Get token manually here because FormData handling is special
+      const token = await getToken();
+
       const response = await fetch(`${API_BASE_URL}/upload`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "user-id": userId,
+          // Note: Do NOT set Content-Type here; fetch handles it for FormData
+        },
         body: formData,
       });
 
@@ -64,11 +85,10 @@ const QuizAssistant = () => {
 
       const data = await response.json();
 
-      // Update state and refresh library list
       setFile({ name: data.filename });
       fetchFiles();
       setIsUploading(false);
-      setStep(2); // Auto-advance to topic selection
+      setStep(2);
     } catch (error) {
       console.error(error);
       alert("Failed to upload PDF. Check backend console.");
@@ -76,22 +96,22 @@ const QuizAssistant = () => {
     }
   };
 
-  // 2. Select EXISTING PDF
+  // 4. SELECT EXISTING
   const handleSelectFromLibrary = (filename) => {
     setFile({ name: filename });
     setStep(2);
   };
 
-  // 3. Generate Quiz (Using Groq + RAG)
+  // 5. GENERATE QUIZ (Secure)
   const generateQuiz = async () => {
     if (!topic || !file) return;
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/generate-quiz`, {
+      // Use authFetch (POST /generate-quiz)
+      const response = await authFetch(`${API_BASE_URL}/generate-quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // IMPORTANT: We send both Topic AND Filename now
         body: JSON.stringify({
           topic: topic,
           filename: file.name,
@@ -106,19 +126,17 @@ const QuizAssistant = () => {
         setQuizData(data.questions);
         setStep(3);
       } else {
-        alert(
-          "The AI couldn't find relevant info for this topic in the selected PDF."
-        );
+        alert("The AI couldn't find relevant info for this topic.");
       }
     } catch (error) {
       console.error(error);
-      alert("Error generating quiz. Please try a different topic.");
+      alert("Error generating quiz.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 4. Quiz Logic
+  // --- UI RENDERING (UNCHANGED LOGIC) ---
   const handleOptionSelect = (questionId, option) => {
     setUserAnswers((prev) => ({ ...prev, [questionId]: option }));
   };
@@ -140,10 +158,9 @@ const QuizAssistant = () => {
     setTopic("");
     setUserAnswers({});
     setScore(0);
-    fetchFiles(); // Refresh list in case something changed
+    fetchFiles();
   };
 
-  // --- RENDER ---
   return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4 font-sans relative overflow-hidden">
       {/* Background Ambience */}
@@ -158,11 +175,11 @@ const QuizAssistant = () => {
             AI Quiz Master
           </h1>
           <p className="text-gray-400 text-sm mt-2">
-            Upload a PDF or choose from the library
+            Upload a PDF or choose from your library
           </p>
         </div>
 
-        {/* STEP 1: SELECTION (Upload OR Library) */}
+        {/* STEP 1: SELECTION */}
         {step === 1 && (
           <div className="flex flex-col gap-6 animate-in fade-in zoom-in duration-300">
             {/* Upload Box */}
@@ -186,16 +203,15 @@ const QuizAssistant = () => {
               </p>
             </div>
 
-            {/* Divider */}
+            {/* Library List */}
             <div className="flex items-center w-full gap-4">
               <div className="h-px bg-white/10 flex-1" />
               <span className="text-gray-500 text-xs uppercase tracking-wider">
-                Or Select Existing
+                Your Library
               </span>
               <div className="h-px bg-white/10 flex-1" />
             </div>
 
-            {/* Library List */}
             <div className="w-full max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
               {availableFiles.length === 0 ? (
                 <div className="text-center py-6 text-gray-500 bg-white/5 rounded-lg border border-dashed border-white/10">
@@ -256,7 +272,6 @@ const QuizAssistant = () => {
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="e.g. 'Photosynthesis' or 'Chapter 4'"
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-white placeholder-white/30 transition-all"
-                onKeyDown={(e) => e.key === "Enter" && generateQuiz()}
               />
             </div>
 
@@ -329,11 +344,7 @@ const QuizAssistant = () => {
                 disabled={Object.keys(userAnswers).length !== quizData.length}
                 className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-full font-bold transition shadow-lg shadow-indigo-500/20"
               >
-                {Object.keys(userAnswers).length !== quizData.length
-                  ? `Answer all questions (${Object.keys(userAnswers).length}/${
-                      quizData.length
-                    })`
-                  : "Submit & See Score"}
+                Submit & See Score
               </button>
             </div>
           </div>
