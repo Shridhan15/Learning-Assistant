@@ -7,6 +7,7 @@ import {
   RefreshCw,
   BookOpen,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 // 1. ACCEPT PROPS FROM CLERK
@@ -141,7 +142,8 @@ const QuizAssistant = ({ getToken, userId }) => {
     setUserAnswers((prev) => ({ ...prev, [questionId]: option }));
   };
 
-  const submitQuiz = () => {
+  const submitQuiz = async () => {
+    // 1. Calculate Score (Local Logic)
     let calculatedScore = 0;
     quizData.forEach((q) => {
       if (userAnswers[q.id] === q.correctAnswer) {
@@ -149,6 +151,27 @@ const QuizAssistant = ({ getToken, userId }) => {
       }
     });
     setScore(calculatedScore);
+
+    // 2. Save to DB (Async Logic)
+    try {
+      // Use authFetch to ensure the user-id header is included for security
+      await authFetch(`${API_BASE_URL}/save-result`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          topic: topic,
+          score: calculatedScore,
+          total_questions: quizData.length,
+        }),
+      });
+      console.log("Quiz result saved to database!");
+    } catch (error) {
+      console.error("Failed to save history:", error);
+      // We log the error but allow the user to proceed to results anyway
+    }
+
+    // 3. Move to Results Screen
     setStep(4);
   };
 
@@ -351,60 +374,130 @@ const QuizAssistant = ({ getToken, userId }) => {
         )}
 
         {/* STEP 4: RESULTS */}
+        {/* STEP 4: RESULTS & REVIEW */}
         {step === 4 && (
-          <div className="text-center animate-in zoom-in duration-300 py-8">
-            <div className="relative inline-flex items-center justify-center w-40 h-40 mb-8">
-              <svg className="w-full h-full -rotate-90 transform drop-shadow-2xl">
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="70"
-                  stroke="currentColor"
-                  strokeWidth="10"
-                  className="text-gray-800"
-                  fill="none"
-                />
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="70"
-                  stroke="currentColor"
-                  strokeWidth="10"
-                  fill="none"
-                  strokeDasharray={440}
-                  strokeDashoffset={440 - (440 * score) / quizData.length}
-                  strokeLinecap="round"
-                  className={`transition-all duration-1000 ease-out ${
-                    score / quizData.length >= 0.7
-                      ? "text-green-500"
-                      : "text-amber-500"
-                  }`}
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-5xl font-bold text-white">
+          <div className="animate-in zoom-in duration-300 pb-8">
+            {/* 1. Score Summary Header */}
+            <div className="text-center mb-8 bg-white/5 p-6 rounded-2xl border border-white/10">
+              <div className="relative inline-flex items-center justify-center w-32 h-32 mb-4">
+                <svg className="w-full h-full -rotate-90 transform">
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    className="text-gray-800"
+                    fill="none"
+                  />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                    strokeDasharray={351}
+                    strokeDashoffset={351 - (351 * score) / quizData.length}
+                    strokeLinecap="round"
+                    className={`transition-all duration-1000 ease-out ${
+                      score / quizData.length >= 0.7
+                        ? "text-green-500"
+                        : "text-amber-500"
+                    }`}
+                  />
+                </svg>
+                <span className="absolute text-3xl font-bold text-white">
                   {Math.round((score / quizData.length) * 100)}%
                 </span>
               </div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                {score / quizData.length >= 0.7 ? "Great Job!" : "Good Effort!"}
+              </h2>
+              <p className="text-gray-400">
+                You scored {score} out of {quizData.length}
+              </p>
             </div>
 
-            <h2 className="text-3xl font-bold mb-2 text-white">
-              {score / quizData.length >= 0.7
-                ? "Excellent Job!"
-                : "Keep Learning!"}
-            </h2>
-            <p className="text-gray-400 mb-8 text-lg">
-              You got <span className="text-white font-bold">{score}</span> out
-              of <span className="text-white font-bold">{quizData.length}</span>{" "}
-              correct.
-            </p>
+            {/* 2. Detailed Review List */}
+            <div className="space-y-6 mb-8">
+              <h3 className="text-xl font-bold text-white border-b border-white/10 pb-2">
+                Detailed Review
+              </h3>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {quizData.map((q, index) => {
+                const isCorrect = userAnswers[q.id] === q.correctAnswer;
+
+                return (
+                  <div
+                    key={q.id || index}
+                    className={`p-5 rounded-xl border ${
+                      isCorrect
+                        ? "bg-green-500/10 border-green-500/30"
+                        : "bg-red-500/10 border-red-500/30"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      {isCorrect ? (
+                        <CheckCircle className="w-6 h-6 text-green-400 shrink-0 mt-1" />
+                      ) : (
+                        <AlertCircle className="w-6 h-6 text-red-400 shrink-0 mt-1" />
+                      )}
+                      <div>
+                        <h4 className="text-lg font-medium text-gray-200">
+                          <span className="opacity-50 mr-2">Q{index + 1}.</span>
+                          {q.question}
+                        </h4>
+                      </div>
+                    </div>
+
+                    {/* Answer Comparison */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
+                      <div
+                        className={`p-3 rounded-lg ${
+                          isCorrect
+                            ? "bg-green-500/20"
+                            : "bg-red-500/20 text-red-200"
+                        }`}
+                      >
+                        <span className="block text-xs uppercase opacity-70 mb-1 font-bold">
+                          Your Answer
+                        </span>
+                        {userAnswers[q.id]}
+                      </div>
+                      {!isCorrect && (
+                        <div className="p-3 rounded-lg bg-green-500/20 text-green-200">
+                          <span className="block text-xs uppercase opacity-70 mb-1 font-bold">
+                            Correct Answer
+                          </span>
+                          {q.correctAnswer}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Explanation */}
+                    {q.explanation && (
+                      <div className="mt-4 pt-3 border-t border-white/10">
+                        <p className="text-sm text-gray-300 leading-relaxed">
+                          <span className="text-indigo-400 font-bold mr-2">
+                            Why?
+                          </span>
+                          {q.explanation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 3. Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center sticky bottom-4 bg-gray-950/90 backdrop-blur-md p-4 rounded-full border border-white/10 shadow-2xl">
               <button
                 onClick={resetApp}
-                className="px-8 py-3 bg-white text-gray-900 hover:bg-gray-200 rounded-full font-bold transition flex items-center justify-center gap-2"
+                className="px-6 py-2 bg-white text-gray-900 hover:bg-gray-200 rounded-full font-bold transition flex items-center gap-2 text-sm"
               >
-                <BookOpen className="w-4 h-4" /> Choose Different File
+                <BookOpen className="w-4 h-4" /> New File
               </button>
 
               <button
@@ -414,9 +507,9 @@ const QuizAssistant = ({ getToken, userId }) => {
                   setScore(0);
                   setUserAnswers({});
                 }}
-                className="px-8 py-3 bg-white/10 text-white hover:bg-white/20 border border-white/10 rounded-full font-bold transition flex items-center justify-center gap-2"
+                className="px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-500 rounded-full font-bold transition flex items-center gap-2 text-sm"
               >
-                <RefreshCw className="w-4 h-4" /> New Topic (Same File)
+                <RefreshCw className="w-4 h-4" /> New Topic
               </button>
             </div>
           </div>
