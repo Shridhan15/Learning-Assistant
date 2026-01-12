@@ -1,11 +1,15 @@
 import os
 import json
+import instructor
+
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 from dotenv import load_dotenv
 from groq import Groq
+from typing import List
+
 from supabase import create_client, Client 
 
 load_dotenv()
@@ -21,7 +25,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Initialize Groq
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+client = instructor.from_groq(Groq(api_key=os.environ.get("GROQ_API_KEY")))
 
 # CORS setup
 app.add_middleware(
@@ -96,13 +100,52 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail="Upload failed")
+    
+
+class QuizResultSchema(BaseModel):
+    filename: str
+    topic: str
+    score: int
+    total_questions: int
+
+# Save Endpoint
+@app.post("/save-result")
+async def save_quiz_result(result: QuizResultSchema, user_id: str = Header(...)):
+    try:
+        supabase.table("quiz_results").insert({
+            "user_id": user_id,
+            "filename": result.filename,
+            "topic": result.topic,
+            "score": result.score,
+            "total_questions": result.total_questions
+        }).execute()
+        
+        return {"message": "Result saved successfully"}
+    except Exception as e:
+        print(f"Error saving result: {e}")
+        # We generally don't want to crash the app if saving history fails, 
+        # so we return an error but keep the status 200 or handle gracefully
+        raise HTTPException(status_code=500, detail="Failed to save result")
+    
+
+class Question(BaseModel):
+    id: int = Field(..., description="The question number (1, 2, 3...)")
+    question: str = Field(..., description="The question text")
+    options: List[str] = Field(..., min_length=4, max_length=4, description="List of exactly 4 options")
+    correctAnswer: str = Field(..., description="The correct option text (must match one of the options)")
+    explanation: str = Field(..., description="A clear 1-2 sentence explanation of why the answer is correct.")
+
+
+class QuizResponse(BaseModel):
+    questions: List[Question]
+
 
 # --- 3. GENERATE QUIZ (This was already good) ---
 @app.post("/generate-quiz")
 async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
     print(f"Generating quiz for topic: {req.topic}")
     
-    # 1. Retrieve Context (Passes user_id to Pinecone filter)
+    # 1. Retrieve Context
     retrieved_chunks = retrieve(req.topic, req.filename, user_id)
     
     if not retrieved_chunks:
@@ -110,50 +153,40 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
     
     context_text = "\n".join(retrieved_chunks)
 
-    # 2. Prompt Engineering
-    system_prompt = """
-    You are an expert teacher. Create a 5-question multiple choice quiz based strictly on the provided context,
-    Each option should be unique and no repetition of question.
-    
-    CRITICAL INSTRUCTIONS:
-    1. Output MUST be valid JSON only.
-    2. Do NOT write introductions or explanations.
-    3. Do NOT use markdown code blocks (like ```json).
-    
-    JSON STRUCTURE:
-    {
-      "questions": [
-        {
-          "id": 1,
-          "question": "Question text?",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
-          "correctAnswer": "Option A"
-        }
-      ]
-    }
-    """
-
-    user_prompt = f"""
-    Context: {context_text}
-    Topic: {req.topic}
-    """
-
+    # 2. Call Groq with Pydantic Validation
     try:
-        # 3. Call Groq API
-        chat_completion = client.chat.completions.create(
+        # We no longer need the complex JSON instructions in the prompt.
+        # The 'response_model' handles all the validation logic.
+        quiz_data = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            max_retries=3,
+            response_model=QuizResponse, # <--- Forces the output to match our Schema
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {
+                    "role": "system", 
+                     "content": """
+                    You are an expert assessment specialist. Create a 5-question multiple choice quiz based STRICTLY on the provided context.
+                    
+                    CRITICAL RULES FOR OPTIONS:
+                    1. **No Ambiguity:** Ensure there is only ONE indisputably correct answer based on the text.
+                    2. **Handle Lists Carefully:** If the text states "A, B, and C cause X", do NOT create a question "What causes X?" with options "A", "B", and "C". This is confusing. Instead, ask "Which of the following is NOT a cause?" or combine them.
+                    3. **Clear Distractors:** Incorrect options must be plausible but clearly wrong based on the text. Do not use vague options like "Other" or "Various factors".
+                    4. **Self-Contained:** The question must be answerable purely from the provided text chunk.
+                    5. **No Repetition:** Do not repeat questions or options.
+                    """
+                },
+                {
+                    "role": "user", 
+                    "content": f"Context: {context_text}\nTopic: {req.topic}"
+                }
             ],
-            model="llama-3.1-8b-instant", 
-            temperature=0.5,
-            response_format={"type": "json_object"} 
+            temperature=0.3, # Slightly lower temp for better structure adherence
         )
 
-        response_content = chat_completion.choices[0].message.content
-        data = json.loads(response_content)
-        return data
+        # 3. Return the validated data as a dictionary
+        return quiz_data.model_dump()
 
     except Exception as e:
         print(f"Error calling Groq: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate quiz")
+    
