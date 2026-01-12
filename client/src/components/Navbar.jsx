@@ -10,12 +10,11 @@ const Navbar = () => {
   const navItems = [
     { name: "Home", path: "/", icon: <Home className="w-4 h-4" /> },
     { name: "Quiz", path: "/quiz", icon: <BrainCircuit className="w-4 h-4" /> },
-    // "AI Tutor" is disabled for now but visible as a preview
+ 
     {
       name: "AI Tutor",
       path: "/tutor",
       icon: <Bot className="w-4 h-4" />,
-      disabled: true,
     },
   ];
 
@@ -23,7 +22,7 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-950/80 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+          
           <Link
             to="/"
             className="flex items-center gap-2 font-bold text-xl text-white"
@@ -33,8 +32,7 @@ const Navbar = () => {
             </div>
             <span>QuizMaster</span>
           </Link>
-
-          {/* Center Navigation Links */}
+ 
           <div className="hidden md:flex items-center space-x-1 bg-white/5 rounded-full p-1 border border-white/5">
             {navItems.map((item) =>
               item.disabled ? (
@@ -64,8 +62,7 @@ const Navbar = () => {
               )
             )}
           </div>
-
-          {/* Right Side: User Profile */}
+ 
           <div className="flex items-center gap-4">
             <ClerkUserButton
               appearance={{

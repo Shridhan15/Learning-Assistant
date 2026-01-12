@@ -9,10 +9,8 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-
-// 1. ACCEPT PROPS FROM CLERK
-const QuizAssistant = ({ getToken, userId }) => {
-  // --- STATE ---
+ 
+const QuizAssistant = ({ getToken, userId }) => { 
   const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
   const [topic, setTopic] = useState("");
@@ -25,9 +23,7 @@ const QuizAssistant = ({ getToken, userId }) => {
   const [score, setScore] = useState(0);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-  // --- HELPER: AUTHENTICATED FETCH ---
-  // This automatically adds your Token and User ID to requests
+ 
   const authFetch = async (url, options = {}) => {
     const token = await getToken();
     const headers = {
@@ -37,17 +33,15 @@ const QuizAssistant = ({ getToken, userId }) => {
     };
     return fetch(url, { ...options, headers });
   };
-
-  // --- INITIALIZATION ---
+ 
   useEffect(() => {
     if (userId) {
       fetchFiles();
     }
-  }, [userId]); // Only fetch when we have a user ID
+  }, [userId]);  
 
   const fetchFiles = async () => {
-    try {
-      // 2. USE AUTH FETCH (GET /files)
+    try { 
       const res = await authFetch(`${API_BASE_URL}/files`);
       const data = await res.json();
       setAvailableFiles(data.files || []);
@@ -55,10 +49,7 @@ const QuizAssistant = ({ getToken, userId }) => {
       console.error("Failed to load library:", err);
     }
   };
-
-  // --- HANDLERS ---
-
-  // 3. UPLOAD NEW PDF (Secure)
+ 
   const handleFileUpload = async (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
@@ -76,8 +67,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "user-id": userId,
-          // Note: Do NOT set Content-Type here; fetch handles it for FormData
+          "user-id": userId, 
         },
         body: formData,
       });
@@ -97,19 +87,18 @@ const QuizAssistant = ({ getToken, userId }) => {
     }
   };
 
-  // 4. SELECT EXISTING
+  // SELECT EXISTING
   const handleSelectFromLibrary = (filename) => {
     setFile({ name: filename });
     setStep(2);
   };
 
-  // 5. GENERATE QUIZ (Secure)
+  //  GENERATE QUIZ 
   const generateQuiz = async () => {
     if (!topic || !file) return;
     setIsLoading(true);
 
-    try {
-      // Use authFetch (POST /generate-quiz)
+    try { 
       const response = await authFetch(`${API_BASE_URL}/generate-quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,14 +125,12 @@ const QuizAssistant = ({ getToken, userId }) => {
       setIsLoading(false);
     }
   };
-
-  // --- UI RENDERING (UNCHANGED LOGIC) ---
+ 
   const handleOptionSelect = (questionId, option) => {
     setUserAnswers((prev) => ({ ...prev, [questionId]: option }));
   };
 
-  const submitQuiz = async () => {
-    // 1. Calculate Score (Local Logic)
+  const submitQuiz = async () => { 
     let calculatedScore = 0;
     quizData.forEach((q) => {
       if (userAnswers[q.id] === q.correctAnswer) {
@@ -151,10 +138,8 @@ const QuizAssistant = ({ getToken, userId }) => {
       }
     });
     setScore(calculatedScore);
-
-    // 2. Save to DB (Async Logic)
-    try {
-      // Use authFetch to ensure the user-id header is included for security
+ 
+    try { 
       await authFetch(`${API_BASE_URL}/save-result`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -167,11 +152,9 @@ const QuizAssistant = ({ getToken, userId }) => {
       });
       console.log("Quiz result saved to database!");
     } catch (error) {
-      console.error("Failed to save history:", error);
-      // We log the error but allow the user to proceed to results anyway
+      console.error("Failed to save history:", error); 
     }
-
-    // 3. Move to Results Screen
+ 
     setStep(4);
   };
 
@@ -186,13 +169,13 @@ const QuizAssistant = ({ getToken, userId }) => {
 
   return (
     <div className="text-white flex flex-col items-center justify-center py-8 font-sans relative">
-      {/* Background Ambience */}
+    
       <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 z-50" />
       <div className="fixed -top-40 -left-40 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-2xl bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl relative z-10">
-        {/* Header */}
+       
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
             AI Quiz Master
@@ -372,8 +355,7 @@ const QuizAssistant = ({ getToken, userId }) => {
             </div>
           </div>
         )}
-
-        {/* STEP 4: RESULTS */}
+ 
         {/* STEP 4: RESULTS & REVIEW */}
         {step === 4 && (
           <div className="animate-in zoom-in duration-300 pb-8">
@@ -502,7 +484,7 @@ const QuizAssistant = ({ getToken, userId }) => {
 
               <button
                 onClick={() => {
-                  setStep(2); // Go back to topic
+                  setStep(2);  
                   setQuizData([]);
                   setScore(0);
                   setUserAnswers({});

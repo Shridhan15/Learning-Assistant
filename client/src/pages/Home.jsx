@@ -34,7 +34,7 @@ const Home = () => {
       });
       const data = await response.json();
 
-      // Grouping Logic: Turn flat list into { "book1.pdf": [quiz1, quiz2], ... }
+      // Turn flat list into { "book1.pdf": [quiz1, quiz2], ... }
       const grouped = data.results.reduce((acc, item) => {
         if (!acc[item.filename]) {
           acc[item.filename] = [];
@@ -82,8 +82,7 @@ const Home = () => {
       </div>
     );
   }
-
-  // --- DASHBOARD STATE ---
+ 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
@@ -101,8 +100,7 @@ const Home = () => {
           <BookOpen className="w-4 h-4" /> New Quiz
         </button>
       </div>
-
-      {/* Grid of Books */}
+ 
       <ResultsGrid groupedResults={groupedResults} />
     </div>
   );
