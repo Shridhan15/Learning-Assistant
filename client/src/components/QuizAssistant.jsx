@@ -185,7 +185,7 @@ const QuizAssistant = ({ getToken, userId }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4 font-sans relative overflow-hidden">
+    <div className="text-white flex flex-col items-center justify-center py-8 font-sans relative">
       {/* Background Ambience */}
       <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 z-50" />
       <div className="fixed -top-40 -left-40 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none" />
@@ -235,7 +235,7 @@ const QuizAssistant = ({ getToken, userId }) => {
               <div className="h-px bg-white/10 flex-1" />
             </div>
 
-            <div className="w-full max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+            <div className="w-full max-h-60 overflow-y-auto space-y-2 pr-2 no-scrollbar">
               {availableFiles.length === 0 ? (
                 <div className="text-center py-6 text-gray-500 bg-white/5 rounded-lg border border-dashed border-white/10">
                   <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -327,7 +327,7 @@ const QuizAssistant = ({ getToken, userId }) => {
               </span>
             </div>
 
-            <div className="space-y-6 max-h-[55vh] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-6 max-h-[55vh] overflow-y-auto pr-2 no-scrollbar">
               {quizData.map((q, index) => (
                 <div
                   key={q.id || index}

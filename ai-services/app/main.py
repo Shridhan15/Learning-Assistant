@@ -64,6 +64,9 @@ def list_files(user_id: str = Header(None)): # <--- FIXED: Accept user_id header
     except Exception as e:
         print(f"Error fetching files: {e}")
         return {"files": []}
+    
+
+
 
 # --- 2. UPLOAD ENDPOINT (This was already good) ---
 @app.post("/upload")
@@ -100,6 +103,26 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail="Upload failed")
+    
+@app.get("/results")
+def get_user_results(user_id: str = Header(None)):
+    if not user_id:
+        return {"results": []}
+
+    try:
+        # Fetch all results for this user, newest first
+        response = supabase.table("quiz_results")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .order("created_at", desc=True)\
+            .execute()
+            
+        return {"results": response.data}
+    except Exception as e:
+        print(f"Error fetching results: {e}")
+        return {"results": []}
+    
+
     
 
 class QuizResultSchema(BaseModel):
