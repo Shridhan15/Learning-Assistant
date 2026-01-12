@@ -7,17 +7,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 
 load_dotenv()
-
-# --- CONFIGURATION ---
+ 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 INDEX_NAME = "learning-assistant"
 
 # Initialize Pinecone
 pc = Pinecone(api_key=PINECONE_API_KEY)
-
-# Initialize Embeddings (Matches your previous logic)
-# Ensure this dimension matches your Pinecone Index settings! 
-# 'all-MiniLM-L6-v2' outputs 384 dimensions.
+ 
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 def load_pdf(file_path):
@@ -40,19 +36,16 @@ def store_in_pinecone(chunks, filename, user_id):
     
     print(f"Embedding {len(chunks)} chunks for {filename} (User: {user_id})...")
     
-    for i, chunk in enumerate(chunks):
-        # 1. Create Vector (Embedding)
+    for i, chunk in enumerate(chunks): 
         vector_values = embeddings.embed_query(chunk.page_content)
-        
-        # 2. Prepare Metadata (Store text + filename + user_id)
+         
         metadata = {
             "text": chunk.page_content,
             "filename": filename,
             "chunk_id": i,
-            "user_id": user_id  # <--- SECURITY: Tag the owner
+            "user_id": user_id   
         }
-        
-        # 3. Create Unique ID (Include user_id to avoid collisions if two users have "math.pdf")
+         
         vector_id = f"{user_id}_{filename}_{i}"
         
         vectors.append({
@@ -60,8 +53,7 @@ def store_in_pinecone(chunks, filename, user_id):
             "values": vector_values, 
             "metadata": metadata
         })
-
-    # Batch upload (Pinecone likes batches of ~100)
+ 
     batch_size = 100
     for i in range(0, len(vectors), batch_size):
         batch = vectors[i:i+batch_size]
@@ -76,17 +68,15 @@ def retrieve(question, filename, user_id, k=5):
     STRICTLY filters by user_id and filename.
     """
     index = pc.Index(INDEX_NAME)
-    
-    # 1. Embed the Question
+     
     query_vector = embeddings.embed_query(question)
-    
-    # 2. Define Filter (Must match BOTH filename and user_id)
+     
     query_filter = {
         "filename": filename,
-        "user_id": user_id # <--- SECURITY: Only search this user's data
+        "user_id": user_id  
     }
     
-    # 3. Query Pinecone
+    #  Query Pinecone
     results = index.query(
         vector=query_vector,
         top_k=k,
@@ -94,6 +84,6 @@ def retrieve(question, filename, user_id, k=5):
         filter=query_filter
     )
     
-    # 4. Extract Text
+    #  Extract Text
     context_chunks = [match['metadata']['text'] for match in results['matches']]
     return context_chunks
