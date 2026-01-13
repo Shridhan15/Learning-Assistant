@@ -9,21 +9,31 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
- 
-const QuizAssistant = ({ getToken, userId }) => { 
+import { useLocation } from "react-router-dom";
+
+import QuizViewer from "./QuizViewer";
+import QuizResults from "./QuizResults";
+import { generateQuizApi } from "../services/quizService";
+
+const QuizAssistant = ({ getToken, userId }) => {
+  const location = useLocation();
+
   const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
   const [topic, setTopic] = useState("");
   const [availableFiles, setAvailableFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isAutoStarting, setIsAutoStarting] = useState(
+    !!(location.state?.filename && location.state?.topic)
+  );
 
   const [quizData, setQuizData] = useState([]);
   const [userAnswers, setUserAnswers] = useState({});
   const [score, setScore] = useState(0);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
- 
+
   const authFetch = async (url, options = {}) => {
     const token = await getToken();
     const headers = {
@@ -33,15 +43,15 @@ const QuizAssistant = ({ getToken, userId }) => {
     };
     return fetch(url, { ...options, headers });
   };
- 
+
   useEffect(() => {
     if (userId) {
       fetchFiles();
     }
-  }, [userId]);  
+  }, [userId]);
 
   const fetchFiles = async () => {
-    try { 
+    try {
       const res = await authFetch(`${API_BASE_URL}/files`);
       const data = await res.json();
       setAvailableFiles(data.files || []);
@@ -49,7 +59,7 @@ const QuizAssistant = ({ getToken, userId }) => {
       console.error("Failed to load library:", err);
     }
   };
- 
+
   const handleFileUpload = async (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
@@ -67,7 +77,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "user-id": userId, 
+          "user-id": userId,
         },
         body: formData,
       });
@@ -93,24 +103,25 @@ const QuizAssistant = ({ getToken, userId }) => {
     setStep(2);
   };
 
-  //  GENERATE QUIZ 
-  const generateQuiz = async () => {
-    if (!topic || !file) return;
+  //  GENERATE QUIZ
+  // GENERATE QUIZ (Updated to accept optional params)
+  const generateQuiz = async (overrideFile = null, overrideTopic = null) => {
+    const activeFile = overrideFile || file;
+    const activeTopic = overrideTopic || topic;
+
+    if (!activeTopic || !activeFile) return;
+
     setIsLoading(true);
+    try {
+      const token = await getToken();
 
-    try { 
-      const response = await authFetch(`${API_BASE_URL}/generate-quiz`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topic,
-          filename: file.name,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Generation failed");
-
-      const data = await response.json();
+      // CALL THE SHARED API SERVICE
+      const data = await generateQuizApi(
+        token,
+        userId,
+        activeFile.name,
+        activeTopic
+      );
 
       if (data.questions && data.questions.length > 0) {
         setQuizData(data.questions);
@@ -119,18 +130,56 @@ const QuizAssistant = ({ getToken, userId }) => {
         alert("The AI couldn't find relevant info for this topic.");
       }
     } catch (error) {
-      console.error(error);
       alert("Error generating quiz.");
     } finally {
       setIsLoading(false);
     }
   };
- 
+
+  useEffect(() => {
+    const autoStart = async () => {
+      if (location.state?.filename && location.state?.topic) {
+        const { filename, topic } = location.state;
+        console.log("Auto-starting quiz for:", filename, topic);
+
+        // Update local state for context
+        setFile({ name: filename });
+        setTopic(topic);
+        setIsLoading(true); // Ensure loader shows
+
+        try {
+          // Call your generation logic directly here to ensure control flow
+          const token = await getToken();
+          const data = await generateQuizApi(token, userId, filename, topic);
+
+          if (data.questions && data.questions.length > 0) {
+            setQuizData(data.questions);
+            setStep(3); // Jump straight to quiz
+          } else {
+            alert("The AI couldn't find relevant info for this topic.");
+            setStep(2); // Fallback to topic selection
+          }
+        } catch (e) {
+          console.error(e);
+          setStep(2); // Fallback on error
+        } finally {
+          // --- FIX 3: Turn off the auto-start blocker ---
+          setIsAutoStarting(false);
+          setIsLoading(false);
+          // Clear router state so refresh doesn't re-trigger
+          window.history.replaceState({}, document.title);
+        }
+      }
+    };
+
+    autoStart();
+  }, [location.state]);
+
   const handleOptionSelect = (questionId, option) => {
     setUserAnswers((prev) => ({ ...prev, [questionId]: option }));
   };
 
-  const submitQuiz = async () => { 
+  const submitQuiz = async () => {
     let calculatedScore = 0;
     quizData.forEach((q) => {
       if (userAnswers[q.id] === q.correctAnswer) {
@@ -138,8 +187,8 @@ const QuizAssistant = ({ getToken, userId }) => {
       }
     });
     setScore(calculatedScore);
- 
-    try { 
+
+    try {
       await authFetch(`${API_BASE_URL}/save-result`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -152,9 +201,9 @@ const QuizAssistant = ({ getToken, userId }) => {
       });
       console.log("Quiz result saved to database!");
     } catch (error) {
-      console.error("Failed to save history:", error); 
+      console.error("Failed to save history:", error);
     }
- 
+
     setStep(4);
   };
 
@@ -167,15 +216,37 @@ const QuizAssistant = ({ getToken, userId }) => {
     fetchFiles();
   };
 
+  const restartTopic = () => {
+    setStep(2);
+    setQuizData([]);
+    setScore(0);
+    setUserAnswers({});
+  };
+
+  if (isAutoStarting || (isLoading && step === 1)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in duration-300">
+        <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mb-4" />
+        <h3 className="text-xl font-semibold text-white">
+          Preparing your practice quiz...
+        </h3>
+        <p className="text-gray-400 mt-2">
+          Analyzing{" "}
+          <span className="text-indigo-400">
+            {location.state?.filename || file?.name}
+          </span>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="text-white flex flex-col items-center justify-center py-8 font-sans relative">
-    
       <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 z-50" />
       <div className="fixed -top-40 -left-40 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-2xl bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl relative z-10">
-       
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
             AI Quiz Master
@@ -282,7 +353,7 @@ const QuizAssistant = ({ getToken, userId }) => {
             </div>
 
             <button
-              onClick={generateQuiz}
+              onClick={() => generateQuiz()}
               disabled={!topic || isLoading}
               className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-full font-medium transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
             >
@@ -302,199 +373,23 @@ const QuizAssistant = ({ getToken, userId }) => {
 
         {/* STEP 3: QUIZ */}
         {step === 3 && (
-          <div className="animate-in slide-in-from-right-8 duration-300">
-            <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-4">
-              <h2 className="text-xl font-semibold text-white">Quiz Time</h2>
-              <span className="text-xs text-gray-400 bg-white/5 px-2 py-1 rounded">
-                Topic: {topic}
-              </span>
-            </div>
-
-            <div className="space-y-6 max-h-[55vh] overflow-y-auto pr-2 no-scrollbar">
-              {quizData.map((q, index) => (
-                <div
-                  key={q.id || index}
-                  className="bg-white/5 p-6 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
-                >
-                  <h3 className="text-lg font-medium mb-4 text-gray-200">
-                    <span className="text-indigo-400 mr-2 font-mono">
-                      Q{index + 1}.
-                    </span>
-                    {q.question}
-                  </h3>
-                  <div className="space-y-2">
-                    {q.options.map((option, optIndex) => (
-                      <button
-                        key={optIndex}
-                        onClick={() => handleOptionSelect(q.id, option)}
-                        className={`w-full text-left px-4 py-3 rounded-lg border transition-all duration-200 flex items-center justify-between group ${
-                          userAnswers[q.id] === option
-                            ? "bg-indigo-600/20 border-indigo-500 text-indigo-100"
-                            : "bg-black/20 border-white/5 hover:bg-white/10 text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        <span>{option}</span>
-                        {userAnswers[q.id] === option && (
-                          <CheckCircle className="w-4 h-4 text-indigo-400" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-white/10 bg-gray-950/80 backdrop-blur-sm sticky bottom-0">
-              <button
-                onClick={submitQuiz}
-                disabled={Object.keys(userAnswers).length !== quizData.length}
-                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-full font-bold transition shadow-lg shadow-indigo-500/20"
-              >
-                Submit & See Score
-              </button>
-            </div>
-          </div>
+          <QuizViewer
+            quizData={quizData}
+            userAnswers={userAnswers}
+            handleOptionSelect={handleOptionSelect}
+            submitQuiz={submitQuiz}
+            topic={topic}
+          />
         )}
- 
-        {/* STEP 4: RESULTS & REVIEW */}
+
         {step === 4 && (
-          <div className="animate-in zoom-in duration-300 pb-8">
-            {/* 1. Score Summary Header */}
-            <div className="text-center mb-8 bg-white/5 p-6 rounded-2xl border border-white/10">
-              <div className="relative inline-flex items-center justify-center w-32 h-32 mb-4">
-                <svg className="w-full h-full -rotate-90 transform">
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    className="text-gray-800"
-                    fill="none"
-                  />
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray={351}
-                    strokeDashoffset={351 - (351 * score) / quizData.length}
-                    strokeLinecap="round"
-                    className={`transition-all duration-1000 ease-out ${
-                      score / quizData.length >= 0.7
-                        ? "text-green-500"
-                        : "text-amber-500"
-                    }`}
-                  />
-                </svg>
-                <span className="absolute text-3xl font-bold text-white">
-                  {Math.round((score / quizData.length) * 100)}%
-                </span>
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">
-                {score / quizData.length >= 0.7 ? "Great Job!" : "Good Effort!"}
-              </h2>
-              <p className="text-gray-400">
-                You scored {score} out of {quizData.length}
-              </p>
-            </div>
-
-            {/* 2. Detailed Review List */}
-            <div className="space-y-6 mb-8">
-              <h3 className="text-xl font-bold text-white border-b border-white/10 pb-2">
-                Detailed Review
-              </h3>
-
-              {quizData.map((q, index) => {
-                const isCorrect = userAnswers[q.id] === q.correctAnswer;
-
-                return (
-                  <div
-                    key={q.id || index}
-                    className={`p-5 rounded-xl border ${
-                      isCorrect
-                        ? "bg-green-500/10 border-green-500/30"
-                        : "bg-red-500/10 border-red-500/30"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3 mb-3">
-                      {isCorrect ? (
-                        <CheckCircle className="w-6 h-6 text-green-400 shrink-0 mt-1" />
-                      ) : (
-                        <AlertCircle className="w-6 h-6 text-red-400 shrink-0 mt-1" />
-                      )}
-                      <div>
-                        <h4 className="text-lg font-medium text-gray-200">
-                          <span className="opacity-50 mr-2">Q{index + 1}.</span>
-                          {q.question}
-                        </h4>
-                      </div>
-                    </div>
-
-                    {/* Answer Comparison */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
-                      <div
-                        className={`p-3 rounded-lg ${
-                          isCorrect
-                            ? "bg-green-500/20"
-                            : "bg-red-500/20 text-red-200"
-                        }`}
-                      >
-                        <span className="block text-xs uppercase opacity-70 mb-1 font-bold">
-                          Your Answer
-                        </span>
-                        {userAnswers[q.id]}
-                      </div>
-                      {!isCorrect && (
-                        <div className="p-3 rounded-lg bg-green-500/20 text-green-200">
-                          <span className="block text-xs uppercase opacity-70 mb-1 font-bold">
-                            Correct Answer
-                          </span>
-                          {q.correctAnswer}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Explanation */}
-                    {q.explanation && (
-                      <div className="mt-4 pt-3 border-t border-white/10">
-                        <p className="text-sm text-gray-300 leading-relaxed">
-                          <span className="text-indigo-400 font-bold mr-2">
-                            Why?
-                          </span>
-                          {q.explanation}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 3. Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center sticky bottom-4 bg-gray-950/90 backdrop-blur-md p-4 rounded-full border border-white/10 shadow-2xl">
-              <button
-                onClick={resetApp}
-                className="px-6 py-2 bg-white text-gray-900 hover:bg-gray-200 rounded-full font-bold transition flex items-center gap-2 text-sm"
-              >
-                <BookOpen className="w-4 h-4" /> New File
-              </button>
-
-              <button
-                onClick={() => {
-                  setStep(2);  
-                  setQuizData([]);
-                  setScore(0);
-                  setUserAnswers({});
-                }}
-                className="px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-500 rounded-full font-bold transition flex items-center gap-2 text-sm"
-              >
-                <RefreshCw className="w-4 h-4" /> New Topic
-              </button>
-            </div>
-          </div>
+          <QuizResults
+            quizData={quizData}
+            userAnswers={userAnswers}
+            score={score}
+            onNewFile={resetApp}
+            onNewTopic={restartTopic}
+          />
         )}
       </div>
     </div>
