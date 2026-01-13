@@ -144,7 +144,7 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     context_text = "\n\n".join(context_chunks)
 
     answer_prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful AI Tutor. Answer the user's question based ONLY on the following context. If the answer is not in the context, say you don't know.\n\nContext:\n{context}"),
+        ("system", "You are a helpful AI Tutor. Answer the user's question based ONLY on the following context. Use easy way of explaning, do not load with heavy book like text only, you are a teacher, teach in that way, do no provide excess text, do not make long explanation,keep simple. If the answer is not in the context, say you don't know.\n\nContext:\n{context}"),
         MessagesPlaceholder(variable_name="chat_history"),
         ("user", "{input}")
     ])
