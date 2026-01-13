@@ -3,6 +3,7 @@ import { UserButton } from "@clerk/clerk-react"; // Or from react-router-dom if 
 import { Link, useLocation, NavLink } from "react-router-dom";
 import { Home, BrainCircuit, Bot, LogOut } from "lucide-react";
 import { UserButton as ClerkUserButton } from "@clerk/clerk-react";
+import { images } from "../assets/assets";
 
 const Navbar = () => {
   const location = useLocation();
@@ -10,7 +11,7 @@ const Navbar = () => {
   const navItems = [
     { name: "Home", path: "/", icon: <Home className="w-4 h-4" /> },
     { name: "Quiz", path: "/quiz", icon: <BrainCircuit className="w-4 h-4" /> },
- 
+
     {
       name: "AI Tutor",
       path: "/tutor",
@@ -22,17 +23,21 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-950/80 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          
           <Link
             to="/"
             className="flex items-center gap-2 font-bold text-xl text-white"
           >
-            <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center">
-              <BrainCircuit className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full flex items-center justify-center overflow-hidden">
+              <img
+                src={images.logo}
+                alt="Logo"
+                className="w-10 h-10 object-contain"
+              />
             </div>
-            <span>QuizMaster</span>
+
+            <span className="font-semibold text-white">QuizMaster</span>
           </Link>
- 
+
           <div className="hidden md:flex items-center space-x-1 bg-white/5 rounded-full p-1 border border-white/5">
             {navItems.map((item) =>
               item.disabled ? (
@@ -62,7 +67,7 @@ const Navbar = () => {
               )
             )}
           </div>
- 
+
           <div className="flex items-center gap-4">
             <ClerkUserButton
               appearance={{

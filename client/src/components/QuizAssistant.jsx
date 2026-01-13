@@ -347,7 +347,7 @@ const QuizAssistant = ({ getToken, userId }) => {
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g. 'Photosynthesis' or 'Chapter 4'"
+                placeholder="Enter topic relevent to book selected."
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-white placeholder-white/30 transition-all"
               />
             </div>

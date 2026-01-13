@@ -80,19 +80,7 @@ const BookCard = ({ filename, quizzes }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() =>
-              navigate("/quiz", {
-                state: {
-                  filename: filename, // The book to use
-                  topic: item.topic, // The specific weak topic (e.g. "Microbes in Industrial products")
-                },
-              })
-            }
-            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 active:scale-95"
-          >
-            <Play className="w-4 h-4 fill-current" /> Take Quiz
-          </button>
+           
           <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <MoreVertical className="w-5 h-5" />
           </button>
