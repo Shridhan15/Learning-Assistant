@@ -4,52 +4,37 @@ import {
   Send,
   Bot,
   User,
-  FileText,
+  Book,
   Sparkles,
   Loader2,
   ChevronRight,
   MessageSquare,
+  Library,
 } from "lucide-react";
 
 const Tutor = () => {
   const { getToken, userId } = useAuth();
 
+  // State
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [messages, setMessages] = useState([]); 
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  // --- STATE SPLIT ---
+  const [loading, setLoading] = useState(false); // Only for AI generating a response
+  const [historyLoading, setHistoryLoading] = useState(false); // Only for loading DB history
   const [filesLoading, setFilesLoading] = useState(true);
 
+  // Auto-scroll
   const messagesEndRef = useRef(null);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
-  const loadChatHistory = async (filename) => {
-    setLoading(true);
-    setMessages([]); 
-    try {
-      const token = await getToken();
-      const response = await fetch(
-        `http://127.0.0.1:8000/chat_history?filename=${filename}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "user-id": userId,
-          },
-        }
-      );
-      const data = await response.json();
-      setMessages(data.history || []);
-    } catch (error) {
-      console.error("Error loading history:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Fetch Files
   useEffect(() => {
@@ -70,6 +55,27 @@ const Tutor = () => {
     fetchFiles();
   }, []);
 
+  // Load History
+  const loadChatHistory = async (filename) => {
+    setHistoryLoading(true); // <--- Use the new specific state
+    setMessages([]);
+    try {
+      const token = await getToken();
+      const response = await fetch(
+        `http://127.0.0.1:8000/chat_history?filename=${filename}`,
+        {
+          headers: { Authorization: `Bearer ${token}`, "user-id": userId },
+        }
+      );
+      const data = await response.json();
+      setMessages(data.history || []);
+    } catch (error) {
+      console.error("Error loading history:", error);
+    } finally {
+      setHistoryLoading(false); // <--- Turn off history loading
+    }
+  };
+
   // Handle Send
   const handleSend = async (e) => {
     e.preventDefault();
@@ -78,9 +84,8 @@ const Tutor = () => {
     const userMessage = input;
     setInput("");
 
-    // 1. Optimistic Update
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
-    setLoading(true);
+    setLoading(true); // <--- This correctly triggers the "AI thinking" bubble
 
     try {
       const token = await getToken();
@@ -93,19 +98,16 @@ const Tutor = () => {
         },
         body: JSON.stringify({
           message: userMessage,
-          filename: selectedFile, 
+          filename: selectedFile,
         }),
       });
 
       const data = await response.json();
-
-      // 2. Add AI Response
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.response },
       ]);
     } catch (error) {
-      console.error(error);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: "Error connecting to AI Tutor." },
@@ -116,70 +118,120 @@ const Tutor = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] pt-16 bg-gray-950">
-      {/* SIDEBAR */}
-      <div className="w-80 bg-gray-900 border-r border-white/10 flex flex-col hidden md:flex">
-        <div className="p-4 border-b border-white/5">
-          <h2 className="text-white font-bold flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-400" />
-            Your Library
+    <div className="flex h-[calc(100vh-4rem)] bg-gray-950 overflow-hidden">
+      {/* --- SIDEBAR --- */}
+      <div className="w-80 bg-gray-900/50 border-r border-white/10 flex flex-col hidden md:flex backdrop-blur-sm">
+        <div className="p-5 border-b border-white/5">
+          <h2 className="text-white font-bold flex items-center gap-3 text-lg">
+            <div className="p-2 bg-indigo-500/20 rounded-lg">
+              <Library className="w-5 h-5 text-indigo-400" />
+            </div>
+            Library
           </h2>
+          <p className="text-xs text-gray-500 mt-2 ml-1">
+            Select a book to start learning
+          </p>
         </div>
+
         <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
           {filesLoading ? (
-            <div className="flex justify-center p-4">
-              <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+            <div className="flex justify-center p-8">
+              <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
             </div>
           ) : files.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center">No files found.</p>
+            <div className="text-center p-8 text-gray-500 text-sm border border-dashed border-white/10 rounded-xl m-2">
+              No books found
+            </div>
           ) : (
             files.map((file) => (
               <button
                 key={file}
                 onClick={() => {
-                  setSelectedFile(file);
-                  loadChatHistory(file);
+                  if (selectedFile !== file) {
+                    setSelectedFile(file);
+                    loadChatHistory(file);
+                  }
                 }}
-                className={`w-full text-left p-3 rounded-lg text-sm transition-all flex items-center justify-between group ${
+                className={`w-full text-left p-3 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group border border-transparent ${
                   selectedFile === file
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                    : "text-gray-400 hover:bg-white/5 hover:text-white"
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 border-indigo-500/50"
+                    : "text-gray-400 hover:bg-white/5 hover:text-white hover:border-white/5"
                 }`}
               >
-                <span className="truncate w-56">{file}</span>
-                {selectedFile === file && <ChevronRight className="w-4 h-4" />}
+                <Book
+                  className={`w-4 h-4 shrink-0 ${
+                    selectedFile === file
+                      ? "text-white"
+                      : "text-gray-500 group-hover:text-gray-300"
+                  }`}
+                />
+                <span className="truncate flex-1 font-medium">{file}</span>
+                {selectedFile === file && (
+                  <ChevronRight className="w-4 h-4 opacity-75" />
+                )}
               </button>
             ))
           )}
         </div>
       </div>
 
-      {/* CHAT AREA */}
-      <div className="flex-1 flex flex-col bg-gray-950 relative">
-        {selectedFile && (
-          <div className="absolute top-0 left-0 right-0 p-4 bg-gray-950/80 backdrop-blur border-b border-white/5 z-10 flex items-center gap-3">
-            <div className="p-2 bg-indigo-500/20 rounded-lg">
-              <Bot className="w-5 h-5 text-indigo-400" />
-            </div>
-            <div>
-              <h3 className="text-white font-bold text-sm">AI Tutor</h3>
-              <p className="text-xs text-gray-400">Context: {selectedFile}</p>
+      {/* --- RIGHT PANEL (Chat) --- */}
+      <div className="flex-1 flex flex-col bg-gray-950 relative h-full">
+        {/* 1. CHAT HEADER */}
+        {selectedFile ? (
+          <div className="h-16 px-6 border-b border-white/5 bg-gray-900/50 backdrop-blur-md flex items-center justify-between shrink-0 z-20">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <Bot className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-sm tracking-wide">
+                  AI Tutor
+                </h3>
+                <div className="flex items-center gap-1.5 opacity-60">
+                  <Book className="w-3 h-3 text-indigo-400" />
+                  <p className="text-xs text-gray-300 truncate max-w-[200px]">
+                    {selectedFile}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        ) : null}
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 pt-20 no-scrollbar">
+        {/* 2. MESSAGES AREA */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scroll-smooth no-scrollbar">
           {!selectedFile ? (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
-              <MessageSquare className="w-10 h-10 text-indigo-400 mb-4" />
-              <h2 className="text-2xl font-bold text-white">Select a Book</h2>
+            <div className="h-full flex flex-col items-center justify-center text-center p-8">
+              <div className="w-24 h-24 bg-gray-900 rounded-full flex items-center justify-center mb-6 ring-4 ring-gray-900 ring-offset-2 ring-offset-indigo-500/20">
+                <MessageSquare className="w-10 h-10 text-indigo-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-3">
+                Welcome to AI Tutor
+              </h2>
+              <p className="text-gray-400 max-w-sm leading-relaxed">
+                Select a document from the sidebar to ask questions, get
+                summaries, or clarify complex topics.
+              </p>
+            </div>
+          ) : historyLoading ? (
+            // --- NEW: Separate Loading State for Book Switching ---
+            <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              <p className="text-sm font-medium">Loading conversation...</p>
             </div>
           ) : messages.length === 0 ? (
-            <div className="mt-10 text-center text-gray-500 text-sm">
-              Start asking about{" "}
-              <span className="text-indigo-400">{selectedFile}</span>
+            <div className="flex flex-col items-center justify-center h-full text-gray-500 space-y-4">
+              <Bot className="w-12 h-12 text-gray-800" />
+              <p className="text-sm">
+                Start the conversation about{" "}
+                <span className="text-indigo-400 font-medium">
+                  {selectedFile}
+                </span>
+              </p>
             </div>
           ) : (
+            // --- Render Messages ---
             messages.map((msg, idx) => (
               <div
                 key={idx}
@@ -188,8 +240,10 @@ const Tutor = () => {
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                    msg.role === "user" ? "bg-indigo-600" : "bg-emerald-600"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg ${
+                    msg.role === "user"
+                      ? "bg-indigo-600 ring-2 ring-gray-950"
+                      : "bg-emerald-600 ring-2 ring-gray-950"
                   }`}
                 >
                   {msg.role === "user" ? (
@@ -198,11 +252,12 @@ const Tutor = () => {
                     <Sparkles className="w-4 h-4 text-white" />
                   )}
                 </div>
+
                 <div
-                  className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${
+                  className={`max-w-[85%] sm:max-w-[75%] px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-md ${
                     msg.role === "user"
                       ? "bg-indigo-600 text-white rounded-tr-none"
-                      : "bg-white/10 text-gray-200 rounded-tl-none border border-white/5"
+                      : "bg-gray-800/80 text-gray-200 rounded-tl-none border border-white/5"
                   }`}
                 >
                   {msg.content}
@@ -210,24 +265,28 @@ const Tutor = () => {
               </div>
             ))
           )}
+
+          {/* --- AI THINKING BUBBLE (Only when 'loading' is true) --- */}
           {loading && (
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4 text-white" />
+            <div className="flex gap-4 animate-pulse">
+              <div className="w-8 h-8 rounded-full bg-emerald-600/50 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 text-white/50" />
               </div>
-              <div className="bg-white/5 px-4 py-3 rounded-2xl rounded-tl-none border border-white/5 flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                <span className="text-xs text-gray-400">Analyzing...</span>
+              <div className="bg-gray-800/50 px-4 py-3 rounded-2xl rounded-tl-none border border-white/5 flex items-center gap-3">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                <span className="text-xs text-gray-400">AI is thinking...</span>
               </div>
             </div>
           )}
+
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 bg-gray-900 border-t border-white/10">
+        {/* 3. INPUT AREA */}
+        <div className="p-4 bg-gray-950 border-t border-white/5 shrink-0 z-20">
           <form
             onSubmit={handleSend}
-            className="max-w-4xl mx-auto relative flex gap-2"
+            className="max-w-4xl mx-auto relative flex items-center gap-3"
           >
             <input
               type="text"
@@ -235,16 +294,18 @@ const Tutor = () => {
               onChange={(e) => setInput(e.target.value)}
               disabled={!selectedFile || loading}
               placeholder={
-                selectedFile ? "Ask a question..." : "Select a file first"
+                selectedFile
+                  ? "Ask a follow-up question..."
+                  : "Select a file to start chatting"
               }
-              className="flex-1 bg-gray-950 text-white rounded-xl border border-white/10 px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="flex-1 bg-gray-900/50 text-white rounded-xl border border-white/10 px-5 py-4 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:bg-gray-900 transition-all placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-inner"
             />
             <button
               type="submit"
               disabled={!selectedFile || loading || !input.trim()}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="p-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-5 h-5" />
             </button>
           </form>
         </div>

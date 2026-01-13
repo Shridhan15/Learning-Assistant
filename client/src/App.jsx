@@ -1,10 +1,10 @@
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom"; // Added useLocation
 import { useAuth, SignedIn, SignedOut } from "@clerk/clerk-react";
 import Home from "./pages/Home";
 
 // Components
-import Navbar from "./components/Navbar";  
+import Navbar from "./components/Navbar";
 import QuizAssistant from "./components/QuizAssistant";
 import Login from "./pages/Login";
 import Tutor from "./pages/Tutor";
@@ -12,6 +12,7 @@ import Tutor from "./pages/Tutor";
 // --- LAYOUT WRAPPER ---
 const ProtectedLayout = ({ children }) => {
   const { getToken, userId, isLoaded } = useAuth();
+  const location = useLocation(); // 1. Get current route
 
   if (!isLoaded) {
     return (
@@ -21,8 +22,6 @@ const ProtectedLayout = ({ children }) => {
     );
   }
 
-  // Automatically inject getToken and userId into children (like QuizAssistant)
-  // This saves  from passing them manually in every Route
   const childrenWithProps = React.Children.map(children, (child) => {
     if (React.isValidElement(child)) {
       return React.cloneElement(child, { getToken, userId });
@@ -30,19 +29,30 @@ const ProtectedLayout = ({ children }) => {
     return child;
   });
 
+  // 2. Check if we are on the Tutor page
+  const isTutorPage = location.pathname === "/tutor";
+
   return (
     <div className="min-h-screen bg-gray-950">
-      {/* 1. The Fixed Navbar */}
       <Navbar />
- 
-      <main className="pt-20 max-w-7xl mx-auto p-4">{childrenWithProps}</main>
+
+      {/* 3. Conditionally render styles */}
+      <main
+        className={
+          isTutorPage
+            ? "pt-16 w-full" // Tutor: Exact navbar height (16 = 4rem), full width, no padding
+            : "pt-20 max-w-7xl mx-auto p-4" // Others: Extra spacing, centered container
+        }
+      >
+        {childrenWithProps}
+      </main>
     </div>
   );
 };
 
 const App = () => {
   return (
-    <Routes> 
+    <Routes>
       <Route
         path="/login/*"
         element={
@@ -56,7 +66,7 @@ const App = () => {
           </>
         }
       />
- 
+
       <Route
         path="/"
         element={
@@ -72,7 +82,7 @@ const App = () => {
           </>
         }
       />
- 
+
       <Route
         path="/quiz"
         element={
