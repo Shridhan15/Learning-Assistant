@@ -11,9 +11,12 @@ import {
   MessageSquare,
   Library,
 } from "lucide-react";
+import { useUser } from "@clerk/clerk-react";
+import { getDisplayName } from "../utils/fileHelpers";
 
 const Tutor = () => {
   const { getToken, userId } = useAuth();
+  const { user } = useUser();
 
   // State
   const [files, setFiles] = useState([]);
@@ -152,7 +155,7 @@ const Tutor = () => {
                     loadChatHistory(file);
                   }
                 }}
-                className={`w-full text-left p-3 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group border border-transparent ${
+                className={`w-full cursor-pointer  text-left p-3 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group border border-transparent ${
                   selectedFile === file
                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 border-indigo-500/50"
                     : "text-gray-400 hover:bg-white/5 hover:text-white hover:border-white/5"
@@ -165,7 +168,7 @@ const Tutor = () => {
                       : "text-gray-500 group-hover:text-gray-300"
                   }`}
                 />
-                <span className="truncate flex-1 font-medium">{file}</span>
+                <span className="truncate flex-1 font-medium">{getDisplayName(file,user?.id)}</span>
                 {selectedFile === file && (
                   <ChevronRight className="w-4 h-4 opacity-75" />
                 )}
@@ -191,7 +194,7 @@ const Tutor = () => {
                 <div className="flex items-center gap-1.5 opacity-60">
                   <Book className="w-3 h-3 text-indigo-400" />
                   <p className="text-xs text-gray-300 truncate max-w-[200px]">
-                    {selectedFile}
+                    {getDisplayName(selectedFile,user?.id)}
                   </p>
                 </div>
               </div>
@@ -226,7 +229,7 @@ const Tutor = () => {
               <p className="text-sm">
                 Start the conversation about{" "}
                 <span className="text-indigo-400 font-medium">
-                  {selectedFile}
+                  {getDisplayName(selectedFile,user?.id)}
                 </span>
               </p>
             </div>
@@ -295,7 +298,7 @@ const Tutor = () => {
               disabled={!selectedFile || loading}
               placeholder={
                 selectedFile
-                  ? "Ask a follow-up question..."
+                  ? "Ask anything about selected file"
                   : "Select a file to start chatting"
               }
               className="flex-1 bg-gray-900/50 text-white rounded-xl border border-white/10 px-5 py-4 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:bg-gray-900 transition-all placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-inner"
@@ -303,7 +306,7 @@ const Tutor = () => {
             <button
               type="submit"
               disabled={!selectedFile || loading || !input.trim()}
-              className="p-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+              className="cursor-pointer p-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
             >
               <Send className="w-5 h-5" />
             </button>

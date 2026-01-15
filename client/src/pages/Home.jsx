@@ -82,7 +82,7 @@ const Home = () => {
       </div>
     );
   }
- 
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
@@ -95,12 +95,12 @@ const Home = () => {
         </div>
         <button
           onClick={() => navigate("/quiz")}
-          className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-all flex items-center gap-2 border border-white/10"
+          className="cursor-pointer  px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-all flex items-center gap-2 border border-white/10"
         >
           <BookOpen className="w-4 h-4" /> New Quiz
         </button>
       </div>
- 
+
       <ResultsGrid groupedResults={groupedResults} />
     </div>
   );

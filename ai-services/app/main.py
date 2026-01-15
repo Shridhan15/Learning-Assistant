@@ -199,37 +199,55 @@ def list_files(user_id: str = Header(None)):
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
     try:
-        # Save file locally (temp)
-        path = f"{UPLOAD_DIR}/{file.filename}"
+        # 1. Create a Unique Filename
+        # Replace spaces to avoid URL encoding issues
+        clean_name = file.filename.replace(" ", "_")
+        unique_filename = f"{user_id}_{clean_name}"
+        
+        # 2. Update Path to use Unique Name (Prevents local temp overwrite)
+        path = f"{UPLOAD_DIR}/{unique_filename}"
+        
         with open(path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Check if file already exists for this user
+        # 3. Check if THIS unique file already exists
+        # We now check against 'unique_filename' instead of raw 'file.filename'
         existing = supabase.table("documents").select("filename")\
-            .eq("filename", file.filename)\
-            .eq("user_id", user_id)\
+            .eq("filename", unique_filename)\
             .execute()
             
         if not existing.data:
-            #  If new Vector Embeddings (Pinecone)
+            # If new, process it
             documents = load_pdf(path)
             chunks = chunk_text(documents)
-            store_in_pinecone(chunks, file.filename, user_id)
             
-            #  Save Filename to Supabase Catalog with User ID
+            # Pass the UNIQUE filename to Pinecone
+            store_in_pinecone(chunks, unique_filename, user_id)
+            
+            # Save the UNIQUE filename to Supabase
             supabase.table("documents").insert({
-                "filename": file.filename, 
+                "filename": unique_filename, 
                 "user_id": user_id
             }).execute()
+            
             message = "Uploaded and processed successfully"
         else:
             message = "File already exists, skipping processing."
+        
+        # Clean up temp file
+        if os.path.exists(path):
+            os.remove(path)
 
-        return {"message": message, "filename": file.filename}
+        return {"message": message, "filename": unique_filename}
 
     except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail="Upload failed")
+        print(f"Error: {e}")
+        # Clean up if error occurs
+        if 'path' in locals() and os.path.exists(path):
+             os.remove(path)
+        raise HTTPException(status_code=500, detail=str(e))   
+    
+
     
 @app.get("/results")
 def get_user_results(user_id: str = Header(None)):

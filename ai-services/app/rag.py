@@ -5,7 +5,7 @@ from pinecone import Pinecone, ServerlessSpec
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 load_dotenv()
  
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
@@ -14,8 +14,13 @@ INDEX_NAME = "learning-assistant"
 # Initialize Pinecone
 pc = Pinecone(api_key=PINECONE_API_KEY)
  
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+# embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
+embeddings = HuggingFaceEndpointEmbeddings(
+    model="sentence-transformers/all-MiniLM-L6-v2",  # note: model, not model_name
+    task="feature-extraction",
+    huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"),
+)
 def load_pdf(file_path):
     loader = PyPDFLoader(file_path)
     documents = loader.load()

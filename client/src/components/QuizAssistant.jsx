@@ -10,13 +10,16 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import { useUser } from "@clerk/clerk-react";
 
 import QuizViewer from "./QuizViewer";
 import QuizResults from "./QuizResults";
 import { generateQuizApi } from "../services/quizService";
+import { getDisplayName } from "../utils/fileHelpers";
 
 const QuizAssistant = ({ getToken, userId }) => {
   const location = useLocation();
+  const { user } = useUser();
 
   const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
@@ -302,13 +305,13 @@ const QuizAssistant = ({ getToken, userId }) => {
                   <button
                     key={fname}
                     onClick={() => handleSelectFromLibrary(fname)}
-                    className="w-full flex items-center gap-3 p-3 bg-white/5 hover:bg-indigo-600/20 hover:border-indigo-500/30 border border-white/5 rounded-lg transition-all text-left group"
+                    className="cursor-pointer  w-full flex items-center gap-3 p-3 bg-white/5 hover:bg-indigo-600/20 hover:border-indigo-500/30 border border-white/5 rounded-lg transition-all text-left group"
                   >
                     <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 group-hover:text-indigo-300">
                       <FileText className="w-5 h-5" />
                     </div>
                     <span className="text-sm text-gray-300 group-hover:text-white truncate flex-1 font-medium">
-                      {fname}
+                      {getDisplayName(fname, user?.id)}
                     </span>
                     <div className="text-xs text-gray-500 group-hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
                       Select &rarr;
