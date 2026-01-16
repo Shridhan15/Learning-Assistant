@@ -8,6 +8,8 @@ import Navbar from "./components/Navbar";
 import QuizAssistant from "./components/QuizAssistant";
 import Login from "./pages/Login";
 import Tutor from "./pages/Tutor";
+import Hero from "./components/Hero";
+import Footer from "./components/Footer";
 
 // --- LAYOUT WRAPPER ---
 const ProtectedLayout = ({ children }) => {
@@ -46,6 +48,7 @@ const ProtectedLayout = ({ children }) => {
       >
         {childrenWithProps}
       </main>
+      <Footer />
     </div>
   );
 };
@@ -53,20 +56,10 @@ const ProtectedLayout = ({ children }) => {
 const App = () => {
   return (
     <Routes>
-      <Route
-        path="/login/*"
-        element={
-          <>
-            <SignedIn>
-              <Navigate to="/" replace />
-            </SignedIn>
-            <SignedOut>
-              <Login />
-            </SignedOut>
-          </>
-        }
-      />
-
+      {/* ROUTE 1: The Root Path ("/") 
+        - Logged In? -> Show Dashboard (Home)
+        - Logged Out? -> Show Hero Page (Landing)
+      */}
       <Route
         path="/"
         element={
@@ -77,12 +70,16 @@ const App = () => {
               </ProtectedLayout>
             </SignedIn>
             <SignedOut>
-              <Navigate to="/login" replace />
+              <Hero />
             </SignedOut>
           </>
         }
       />
 
+      {/* ROUTE 2: Protected Routes (Quiz, Tutor)
+        - Logged In? -> Show Page
+        - Logged Out? -> Redirect to Home (Hero) so they can sign in
+      */}
       <Route
         path="/quiz"
         element={
@@ -93,7 +90,7 @@ const App = () => {
               </ProtectedLayout>
             </SignedIn>
             <SignedOut>
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             </SignedOut>
           </>
         }
@@ -109,12 +106,32 @@ const App = () => {
               </ProtectedLayout>
             </SignedIn>
             <SignedOut>
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
+            </SignedOut>
+          </>
+        }
+      />
+
+      {/* ROUTE 3: Explicit Login Page (Optional)
+        - If you still want a dedicated /login page, keep this.
+        - Otherwise, the Hero page handles login via the modal.
+      */}
+      <Route
+        path="/login"
+        element={
+          <>
+            <SignedIn>
+              <Navigate to="/" replace />
+            </SignedIn>
+            <SignedOut>
+              <Login />
             </SignedOut>
           </>
         }
       />
     </Routes>
+    
+    
   );
 };
 

@@ -168,7 +168,7 @@ const Tutor = () => {
                     loadChatHistory(file);
                   }
                 }}
-                className={`cursor-pointer w-full cursor-pointer  text-left p-3 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group border border-transparent ${
+                className={`   w-full cursor-pointer  text-left p-3 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group border border-transparent ${
                   selectedFile === file
                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 border-indigo-500/50"
                     : "text-gray-400 hover:bg-white/5 hover:text-white hover:border-white/5"

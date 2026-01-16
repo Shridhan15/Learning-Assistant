@@ -10,7 +10,10 @@ import {
   ArrowRight,
   Loader2,
   BrainCircuit,
+  
 } from "lucide-react";
+import EmptyState from "../components/EmptyState";
+import PageLoading from "../components/PageLoading";
 
 const Home = () => {
   const { getToken, userId } = useAuth();
@@ -53,35 +56,11 @@ const Home = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-      </div>
-    );
+    return <PageLoading />;
   }
 
-  // --- EMPTY STATE (New User) ---
   if (Object.keys(groupedResults).length === 0) {
-    return (
-      <div className="text-center py-20 animate-in fade-in zoom-in duration-500">
-        <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
-          <BrainCircuit className="w-12 h-12 text-indigo-400" />
-        </div>
-        <h2 className="text-3xl font-bold text-white mb-4">
-          Welcome to QuizMaster
-        </h2>
-        <p className="text-gray-400 max-w-md mx-auto mb-8">
-          You haven't taken any quizzes yet. Upload a PDF to generate your first
-          AI-powered quiz!
-        </p>
-        <button
-          onClick={() => navigate("/quiz")}
-          className="cursor-pointer px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold transition-all shadow-lg shadow-indigo-500/25 flex items-center gap-2 mx-auto"
-        >
-          Start Learning <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
-    );
+    return <EmptyState />;
   }
 
   return (
