@@ -7,9 +7,14 @@ import {
   Book,
   Sparkles,
   Loader2,
-  ChevronRight,
   MessageSquare,
   Library,
+  FileText,
+  Github,
+  Linkedin,
+  Globe,
+  Heart,
+  Code,
 } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 import { getDisplayName } from "../utils/fileHelpers";
@@ -27,14 +32,23 @@ const Tutor = () => {
   const [input, setInput] = useState("");
 
   // --- STATE SPLIT ---
-  const [loading, setLoading] = useState(false); // Only for AI generating a response
-  const [historyLoading, setHistoryLoading] = useState(false); // Only for loading DB history
+  const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [filesLoading, setFilesLoading] = useState(true);
 
-  // Auto-scroll
+  // ✅ Auto-scroll (messages only)
+  const chatContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatContainerRef.current;
+    if (!el) return;
+
+    // ✅ scroll inside messages container only
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: "smooth",
+    });
   };
 
   useEffect(() => {
@@ -62,7 +76,7 @@ const Tutor = () => {
 
   // Load History
   const loadChatHistory = async (filename) => {
-    setHistoryLoading(true); // <--- Use the new specific state
+    setHistoryLoading(true);
     setMessages([]);
     try {
       const token = await getToken();
@@ -73,6 +87,7 @@ const Tutor = () => {
         }
       );
       const data = await response.json();
+
       const historyWithFlags = (data.history || []).map((msg) => ({
         ...msg,
         isNew: false,
@@ -82,7 +97,7 @@ const Tutor = () => {
     } catch (error) {
       console.error("Error loading history:", error);
     } finally {
-      setHistoryLoading(false); //  Turn off history loading
+      setHistoryLoading(false);
     }
   };
 
@@ -134,10 +149,12 @@ const Tutor = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-gray-950 overflow-hidden">
+    // FIX IS HERE: "fixed top-16" forces it to start BELOW the navbar
+    <div className="fixed top-16 left-0 right-0 bottom-0 flex overflow-hidden bg-gray-950 z-0">
       {/* --- SIDEBAR --- */}
       <div className="w-80 bg-gray-900/50 border-r border-white/10 flex flex-col hidden md:flex backdrop-blur-sm">
-        <div className="p-5 border-b border-white/5">
+        {/* Sidebar Header */}
+        <div className="p-5 border-b border-white/5 shrink-0">
           <h2 className="text-white font-bold flex items-center gap-3 text-lg">
             <div className="p-2 bg-indigo-500/20 rounded-lg">
               <Library className="w-5 h-5 text-indigo-400" />
@@ -149,6 +166,7 @@ const Tutor = () => {
           </p>
         </div>
 
+        {/* File List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
           {filesLoading ? (
             <div className="flex justify-center p-8">
@@ -160,7 +178,7 @@ const Tutor = () => {
             </div>
           ) : (
             files.map((file) => (
-              <button
+              <button 
                 key={file}
                 onClick={() => {
                   if (selectedFile !== file) {
@@ -168,35 +186,59 @@ const Tutor = () => {
                     loadChatHistory(file);
                   }
                 }}
-                className={`   w-full cursor-pointer  text-left p-3 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group border border-transparent ${
-                  selectedFile === file
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 border-indigo-500/50"
-                    : "text-gray-400 hover:bg-white/5 hover:text-white hover:border-white/5"
-                }`}
-              >
-                <Book
-                  className={`w-4 h-4 shrink-0 ${
+                className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
+                  ${
                     selectedFile === file
-                      ? "text-white"
-                      : "text-gray-500 group-hover:text-gray-300"
+                      ? "bg-indigo-600/10 border-indigo-500/50 ring-1 ring-indigo-500/20"
+                      : "bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10"
                   }`}
-                />
-                <span className="truncate flex-1 font-medium">
-                  {getDisplayName(file, user?.id)}
-                </span>
-                {selectedFile === file && (
-                  <ChevronRight className="w-4 h-4 opacity-75" />
-                )}
+              >
+                <div
+                  className={`p-2 rounded-lg transition-colors ${
+                    selectedFile === file
+                      ? "bg-indigo-500 text-white"
+                      : "bg-slate-800 text-slate-400 group-hover:text-indigo-400"
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4
+                    className={`text-sm font-medium truncate ${
+                      selectedFile === file
+                        ? "text-indigo-100"
+                        : "text-slate-300 group-hover:text-white"
+                    }`}
+                  >
+                    {getDisplayName(file, user?.id)}
+                  </h4>
+                </div>
               </button>
             ))
           )}
         </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-5 border-t border-white/5 bg-gray-900/30">
+           
+
+          <div className="text-center space-y-1">
+            <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
+              Made
+              by <span className="text-indigo-400 font-medium">Shridhan</span>
+            </p>
+            <p className="text-[10px] text-gray-600">
+              © 2026 AI Quiz Master Project
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* --- RIGHT PANEL (Chat) --- */}
-      <div className="flex-1 flex flex-col bg-gray-950 relative h-full">
-        {selectedFile ? (
-          <div className="h-16 px-6 border-b border-white/5 bg-gray-900/50 backdrop-blur-md flex items-center justify-between shrink-0 z-20">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-950 relative">
+        {/* Header */}
+        {selectedFile && (
+          <div className="h-16 px-6 border-b border-white/5 bg-gray-900/60 backdrop-blur-md flex items-center justify-between shrink-0 z-20">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <Bot className="w-5 h-5 text-white" />
@@ -214,32 +256,34 @@ const Tutor = () => {
               </div>
             </div>
           </div>
-        ) : null}
+        )}
 
-        {/*  MESSAGES AREA */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scroll-smooth no-scrollbar">
+        {/* Messages */}
+        <div
+          ref={chatContainerRef}
+          className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6 scroll-smooth no-scrollbar"
+        >
           {!selectedFile ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8">
-              <div className="w-24 h-24 bg-gray-900 rounded-full flex items-center justify-center mb-6 ring-4 ring-gray-900 ring-offset-2 ring-offset-indigo-500/20">
-                <MessageSquare className="w-10 h-10 text-indigo-400" />
+              <div className="w-20 h-20 bg-gray-900 rounded-2xl flex items-center justify-center mb-6 ring-4 ring-gray-900 ring-offset-2 ring-offset-indigo-500/20">
+                <MessageSquare className="w-9 h-9 text-indigo-400" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-3">
                 Welcome to AI Tutor
               </h2>
-              <p className="text-gray-400 max-w-sm leading-relaxed">
+              <p className="text-gray-400 max-w-sm leading-relaxed text-sm">
                 Select a document from the sidebar to ask questions, get
                 summaries, or clarify complex topics.
               </p>
             </div>
           ) : historyLoading ? (
-            // Separate Loading State for Book Switching ---
             <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              <Loader2 className="w-7 h-7 animate-spin text-indigo-500" />
               <p className="text-sm font-medium">Loading conversation...</p>
             </div>
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 space-y-4">
-              <Bot className="w-12 h-12 text-gray-800" />
+              <Bot className="w-10 h-10 text-gray-800" />
               <p className="text-sm">
                 Start the conversation about{" "}
                 <span className="text-indigo-400 font-medium">
@@ -248,7 +292,6 @@ const Tutor = () => {
               </p>
             </div>
           ) : (
-            // --- Render Messages ---
             messages.map((msg, idx) => (
               <div
                 key={idx}
@@ -269,7 +312,6 @@ const Tutor = () => {
                     <Sparkles className="w-4 h-4 text-white" />
                   )}
                 </div>
-
                 <div
                   className={`max-w-[85%] sm:max-w-[75%] px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-md ${
                     msg.role === "user"
@@ -288,8 +330,6 @@ const Tutor = () => {
               </div>
             ))
           )}
-
-          {/* --- AI THINKING BUBBLE--- */}
           {loading && (
             <div className="flex gap-4 animate-pulse">
               <div className="w-8 h-8 rounded-full bg-emerald-600/50 flex items-center justify-center shrink-0">
@@ -301,15 +341,14 @@ const Tutor = () => {
               </div>
             </div>
           )}
-
           <div ref={messagesEndRef} />
         </div>
 
-        {/*  INPUT AREA */}
-        <div className="p-4 bg-gray-950 border-t border-white/5 shrink-0 z-20">
+        {/* Input Area */}
+        <div className="p-3 sm:p-4 bg-gray-950 border-t border-white/5 shrink-0 z-20">
           <form
             onSubmit={handleSend}
-            className="max-w-4xl mx-auto relative flex items-center gap-3"
+            className="max-w-2xl mx-auto flex items-center gap-2"
           >
             <input
               type="text"
@@ -321,14 +360,14 @@ const Tutor = () => {
                   ? "Ask anything about selected file"
                   : "Select a file to start chatting"
               }
-              className="flex-1 bg-gray-900/50 text-white rounded-xl border border-white/10 px-5 py-4 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:bg-gray-900 transition-all placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-inner"
+              className="flex-1 bg-gray-900/70 text-white rounded-lg border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 placeholder:text-gray-500 shadow-inner"
             />
             <button
               type="submit"
               disabled={!selectedFile || loading || !input.trim()}
-              className="cursor-pointer p-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+              className="cursor-pointer p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
             >
-              <Send className="w-5 h-5" />
+              <Send className="w-4 h-4" />
             </button>
           </form>
         </div>

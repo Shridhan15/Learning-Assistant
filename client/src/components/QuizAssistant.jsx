@@ -108,6 +108,11 @@ const QuizAssistant = ({ getToken, userId }) => {
 
   // SELECT EXISTING
   const handleSelectFromLibrary = (filename) => {
+    // Check if the selected file is different from the current one
+    if (file?.name !== filename) {
+      setTopic(""); // Only clear topic if it's a new file
+    }
+
     setFile({ name: filename });
     setStep(2);
   };
@@ -242,7 +247,8 @@ const QuizAssistant = ({ getToken, userId }) => {
         <p className="text-gray-400 mt-2">
           Analyzing{" "}
           <span className="text-indigo-400">
-            {location.state?.filename || file?.name}
+            {getDisplayName(location.state?.filename, user?.id) ||
+              getDisplayName(file?.name, user?.id)}
           </span>
         </p>
       </div>
@@ -272,7 +278,7 @@ const QuizAssistant = ({ getToken, userId }) => {
             </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-2">
+          <div className="flex-1 overflow-y-auto p-4 no-scrollbar space-y-2">
             {availableFiles.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-500 py-10 opacity-60">
                 <BookOpen className="w-10 h-10 mb-3" />
@@ -283,7 +289,7 @@ const QuizAssistant = ({ getToken, userId }) => {
                 <button
                   key={fname}
                   onClick={() => handleSelectFromLibrary(fname)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
+                  className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
                     ${
                       file?.name === fname
                         ? "bg-indigo-600/10 border-indigo-500/50 ring-1 ring-indigo-500/20"
@@ -309,10 +315,7 @@ const QuizAssistant = ({ getToken, userId }) => {
                     >
                       {getDisplayName(fname, user?.id)}
                     </h4>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                      PDF Document
-                    </p>
-                  </div> 
+                  </div>
                   {file?.name === fname && (
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
                   )}
@@ -330,10 +333,7 @@ const QuizAssistant = ({ getToken, userId }) => {
           </div>
         </div>
 
-        {/* =========================================================
-            RIGHT CONTENT: UPLOAD & QUIZ
-           ========================================================= */}
-        <div className="flex-1 flex flex-col h-full relative overflow-y-auto custom-scrollbar">
+        <div className="flex-1 flex flex-col h-full relative overflow-y-auto no-scrollbar">
           {/* Decorative Header Background */}
           <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
 
@@ -378,6 +378,10 @@ const QuizAssistant = ({ getToken, userId }) => {
                         <span className="text-indigo-300 font-medium">
                           Processing File...
                         </span>
+                        <p className="text-slate-400 text-sm mt-2 max-w-xs leading-relaxed">
+                          This is a one-time process for new files. It might
+                          take a few moments.
+                        </p>
                       </div>
                     ) : (
                       <>
@@ -425,7 +429,7 @@ const QuizAssistant = ({ getToken, userId }) => {
                 {/* Input */}
                 <div className="space-y-3 mb-8">
                   <label className="text-sm font-medium text-slate-300 ml-1">
-                    Quiz Topic 
+                    Quiz Topic
                   </label>
                   <div className="relative">
                     <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -443,7 +447,7 @@ const QuizAssistant = ({ getToken, userId }) => {
                 <button
                   onClick={() => generateQuiz()}
                   disabled={!topic || isLoading}
-                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 rounded-xl font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] transition-all flex items-center justify-center gap-3"
+                  className="cursor-pointer w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 rounded-xl font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] transition-all flex items-center justify-center gap-3"
                 >
                   {isLoading ? (
                     <>

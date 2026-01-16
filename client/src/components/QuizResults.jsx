@@ -15,15 +15,19 @@ const QuizResults = ({
   return (
     <div className="animate-in zoom-in duration-300 pb-8">
       {/* 1. Score Summary Header */}
-      <div className="text-center mb-8 bg-white/5 p-6 rounded-2xl border border-white/10">
-        <div className="relative inline-flex items-center justify-center w-32 h-32 mb-4">
-          <svg className="w-full h-full -rotate-90 transform">
+      <div className="flex items-center justify-center gap-4 mb-6 bg-white/5 p-4 rounded-xl border border-white/10">
+        {/* Left Side: Circular Progress */}
+        <div className="relative inline-flex items-center justify-center w-16 h-16 shrink-0">
+          <svg
+            className="w-full h-full -rotate-90 transform"
+            viewBox="0 0 128 128"
+          >
             <circle
               cx="64"
               cy="64"
               r="56"
               stroke="currentColor"
-              strokeWidth="8"
+              strokeWidth="10"
               className="text-gray-800"
               fill="none"
             />
@@ -32,7 +36,7 @@ const QuizResults = ({
               cy="64"
               r="56"
               stroke="currentColor"
-              strokeWidth="8"
+              strokeWidth="10"
               fill="none"
               strokeDasharray={351}
               strokeDashoffset={351 - (351 * score) / quizData.length}
@@ -42,16 +46,21 @@ const QuizResults = ({
               }`}
             />
           </svg>
-          <span className="absolute text-3xl font-bold text-white">
+          <span className="absolute text-sm font-bold text-white">
             {percentage}%
           </span>
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">
-          {isPassing ? "Great Job!" : "Good Effort!"}
-        </h2>
-        <p className="text-gray-400">
-          You scored {score} out of {quizData.length}
-        </p>
+
+        {/* Right Side: Text Information */}
+        <div className="text-left">
+          <h2 className="text-lg font-bold text-white leading-tight">
+            {isPassing ? "Great Job!" : "Good Effort!"}
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            You scored <span className="text-white font-medium">{score}</span>{" "}
+            out of {quizData.length}
+          </p>
+        </div>
       </div>
 
       {/* 2. Detailed Review List */}

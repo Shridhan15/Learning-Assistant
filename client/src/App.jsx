@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom"; // Added useLocation
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth, SignedIn, SignedOut } from "@clerk/clerk-react";
 import Home from "./pages/Home";
 
@@ -14,7 +14,7 @@ import Footer from "./components/Footer";
 // --- LAYOUT WRAPPER ---
 const ProtectedLayout = ({ children }) => {
   const { getToken, userId, isLoaded } = useAuth();
-  const location = useLocation(); // 1. Get current route
+  const location = useLocation();
 
   if (!isLoaded) {
     return (
@@ -31,24 +31,24 @@ const ProtectedLayout = ({ children }) => {
     return child;
   });
 
-  // 2. Check if we are on the Tutor page
   const isTutorPage = location.pathname === "/tutor";
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gray-950 flex flex-col">
       <Navbar />
 
-      {/* 3. Conditionally render styles */}
       <main
         className={
           isTutorPage
-            ? "pt-16 w-full" // Tutor: Exact navbar height (16 = 4rem), full width, no padding
-            : "pt-20 max-w-7xl mx-auto p-4" // Others: Extra spacing, centered container
+            ? "pt-16 w-full flex-1 h-[calc(100vh-4rem)]" // Tutor: Full height minus navbar, no padding
+            : "pt-20 max-w-7xl mx-auto p-4 w-full flex-1" // Others: Standard spacing
         }
       >
         {childrenWithProps}
       </main>
-      <Footer />
+
+      {/* FIX: Only show Global Footer if NOT on Tutor page */}
+      {!isTutorPage && <Footer />}
     </div>
   );
 };
@@ -56,10 +56,6 @@ const ProtectedLayout = ({ children }) => {
 const App = () => {
   return (
     <Routes>
-      {/* ROUTE 1: The Root Path ("/") 
-        - Logged In? -> Show Dashboard (Home)
-        - Logged Out? -> Show Hero Page (Landing)
-      */}
       <Route
         path="/"
         element={
@@ -76,10 +72,6 @@ const App = () => {
         }
       />
 
-      {/* ROUTE 2: Protected Routes (Quiz, Tutor)
-        - Logged In? -> Show Page
-        - Logged Out? -> Redirect to Home (Hero) so they can sign in
-      */}
       <Route
         path="/quiz"
         element={
@@ -112,10 +104,6 @@ const App = () => {
         }
       />
 
-      {/* ROUTE 3: Explicit Login Page (Optional)
-        - If you still want a dedicated /login page, keep this.
-        - Otherwise, the Hero page handles login via the modal.
-      */}
       <Route
         path="/login"
         element={
@@ -130,8 +118,6 @@ const App = () => {
         }
       />
     </Routes>
-    
-    
   );
 };
 

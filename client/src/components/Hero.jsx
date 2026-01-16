@@ -38,7 +38,7 @@ const Hero = () => {
         </p>
  
         <SignInButton mode="modal">
-          <button className="group relative inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-full font-semibold text-base transition-all transform hover:scale-105 hover:shadow-[0_0_20px_rgba(79,70,229,0.5)]">
+          <button className=" cursor-pointer group relative inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-full font-semibold text-base transition-all transform hover:scale-105 hover:shadow-[0_0_20px_rgba(79,70,229,0.5)]">
             Get Started for Free
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
