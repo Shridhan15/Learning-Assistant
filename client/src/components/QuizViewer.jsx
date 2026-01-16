@@ -35,7 +35,7 @@ const QuizViewer = ({
                 <button
                   key={optIndex}
                   onClick={() => handleOptionSelect(q.id, option)}
-                  className={`w-full text-left px-4 py-3 rounded-lg border transition-all duration-200 flex items-center justify-between group ${
+                  className={`cursor-pointer w-full text-left px-4 py-3 rounded-lg border transition-all duration-200 flex items-center justify-between group ${
                     userAnswers[q.id] === option
                       ? "bg-indigo-600/20 border-indigo-500 text-indigo-100"
                       : "bg-black/20 border-white/5 hover:bg-white/10 text-gray-400 hover:text-white"
@@ -56,7 +56,7 @@ const QuizViewer = ({
         <button
           onClick={submitQuiz}
           disabled={Object.keys(userAnswers).length !== quizData.length}
-          className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-full font-bold transition shadow-lg shadow-indigo-500/20"
+          className="cursor-pointer w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-full font-bold transition shadow-lg shadow-indigo-500/20"
         >
           Submit & See Score
         </button>

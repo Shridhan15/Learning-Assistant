@@ -17,6 +17,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [groupedResults, setGroupedResults] = useState({});
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
   useEffect(() => {
     fetchResults();
@@ -26,7 +27,7 @@ const Home = () => {
     try {
       const token = await getToken();
       // Replace with your actual backend URL
-      const response = await fetch("http://127.0.0.1:8000/results", {
+      const response = await fetch(`${API_BASE_URL}/results`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "user-id": userId,
@@ -75,7 +76,7 @@ const Home = () => {
         </p>
         <button
           onClick={() => navigate("/quiz")}
-          className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold transition-all shadow-lg shadow-indigo-500/25 flex items-center gap-2 mx-auto"
+          className="cursor-pointer px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold transition-all shadow-lg shadow-indigo-500/25 flex items-center gap-2 mx-auto"
         >
           Start Learning <ArrowRight className="w-4 h-4" />
         </button>

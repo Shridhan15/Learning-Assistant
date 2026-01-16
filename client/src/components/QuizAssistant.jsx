@@ -35,7 +35,7 @@ const QuizAssistant = ({ getToken, userId }) => {
   const [userAnswers, setUserAnswers] = useState({});
   const [score, setScore] = useState(0);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
   const authFetch = async (url, options = {}) => {
     const token = await getToken();
@@ -336,7 +336,7 @@ const QuizAssistant = ({ getToken, userId }) => {
               </div>
               <button
                 onClick={() => setStep(1)}
-                className="text-xs hover:text-white underline"
+                className="text-xs cursor-pointer  hover:text-white underline"
               >
                 Change
               </button>
@@ -358,7 +358,7 @@ const QuizAssistant = ({ getToken, userId }) => {
             <button
               onClick={() => generateQuiz()}
               disabled={!topic || isLoading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-full font-medium transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+              className=" cursor-pointer  w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-full font-medium transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
             >
               {isLoading ? (
                 <>

@@ -13,10 +13,12 @@ import {
 } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 import { getDisplayName } from "../utils/fileHelpers";
+import Typewriter from "../components/Typewriter";
 
 const Tutor = () => {
   const { getToken, userId } = useAuth();
   const { user } = useUser();
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
   // State
   const [files, setFiles] = useState([]);
@@ -44,7 +46,7 @@ const Tutor = () => {
     const fetchFiles = async () => {
       try {
         const token = await getToken();
-        const response = await fetch("http://127.0.0.1:8000/files", {
+        const response = await fetch(`${API_BASE_URL}/files`, {
           headers: { Authorization: `Bearer ${token}`, "user-id": userId },
         });
         const data = await response.json();
@@ -65,17 +67,22 @@ const Tutor = () => {
     try {
       const token = await getToken();
       const response = await fetch(
-        `http://127.0.0.1:8000/chat_history?filename=${filename}`,
+        `${API_BASE_URL}/chat_history?filename=${filename}`,
         {
           headers: { Authorization: `Bearer ${token}`, "user-id": userId },
         }
       );
       const data = await response.json();
-      setMessages(data.history || []);
+      const historyWithFlags = (data.history || []).map((msg) => ({
+        ...msg,
+        isNew: false,
+      }));
+
+      setMessages(historyWithFlags);
     } catch (error) {
       console.error("Error loading history:", error);
     } finally {
-      setHistoryLoading(false); // <--- Turn off history loading
+      setHistoryLoading(false); //  Turn off history loading
     }
   };
 
@@ -87,12 +94,15 @@ const Tutor = () => {
     const userMessage = input;
     setInput("");
 
-    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
-    setLoading(true); // <--- This correctly triggers the "AI thinking" bubble
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: userMessage, isNew: true },
+    ]);
+    setLoading(true);
 
     try {
       const token = await getToken();
-      const response = await fetch("http://127.0.0.1:8000/chat", {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,11 +114,14 @@ const Tutor = () => {
           filename: selectedFile,
         }),
       });
-
       const data = await response.json();
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.response },
+        {
+          role: "assistant",
+          content: data.response,
+          isNew: true,
+        },
       ]);
     } catch (error) {
       setMessages((prev) => [
@@ -155,7 +168,7 @@ const Tutor = () => {
                     loadChatHistory(file);
                   }
                 }}
-                className={`w-full cursor-pointer  text-left p-3 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group border border-transparent ${
+                className={`cursor-pointer w-full cursor-pointer  text-left p-3 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group border border-transparent ${
                   selectedFile === file
                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 border-indigo-500/50"
                     : "text-gray-400 hover:bg-white/5 hover:text-white hover:border-white/5"
@@ -168,7 +181,9 @@ const Tutor = () => {
                       : "text-gray-500 group-hover:text-gray-300"
                   }`}
                 />
-                <span className="truncate flex-1 font-medium">{getDisplayName(file,user?.id)}</span>
+                <span className="truncate flex-1 font-medium">
+                  {getDisplayName(file, user?.id)}
+                </span>
                 {selectedFile === file && (
                   <ChevronRight className="w-4 h-4 opacity-75" />
                 )}
@@ -180,7 +195,6 @@ const Tutor = () => {
 
       {/* --- RIGHT PANEL (Chat) --- */}
       <div className="flex-1 flex flex-col bg-gray-950 relative h-full">
-        {/* 1. CHAT HEADER */}
         {selectedFile ? (
           <div className="h-16 px-6 border-b border-white/5 bg-gray-900/50 backdrop-blur-md flex items-center justify-between shrink-0 z-20">
             <div className="flex items-center gap-3">
@@ -194,7 +208,7 @@ const Tutor = () => {
                 <div className="flex items-center gap-1.5 opacity-60">
                   <Book className="w-3 h-3 text-indigo-400" />
                   <p className="text-xs text-gray-300 truncate max-w-[200px]">
-                    {getDisplayName(selectedFile,user?.id)}
+                    {getDisplayName(selectedFile, user?.id)}
                   </p>
                 </div>
               </div>
@@ -202,7 +216,7 @@ const Tutor = () => {
           </div>
         ) : null}
 
-        {/* 2. MESSAGES AREA */}
+        {/*  MESSAGES AREA */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scroll-smooth no-scrollbar">
           {!selectedFile ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8">
@@ -218,7 +232,7 @@ const Tutor = () => {
               </p>
             </div>
           ) : historyLoading ? (
-            // --- NEW: Separate Loading State for Book Switching ---
+            // Separate Loading State for Book Switching ---
             <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
               <p className="text-sm font-medium">Loading conversation...</p>
@@ -229,7 +243,7 @@ const Tutor = () => {
               <p className="text-sm">
                 Start the conversation about{" "}
                 <span className="text-indigo-400 font-medium">
-                  {getDisplayName(selectedFile,user?.id)}
+                  {getDisplayName(selectedFile, user?.id)}
                 </span>
               </p>
             </div>
@@ -263,13 +277,19 @@ const Tutor = () => {
                       : "bg-gray-800/80 text-gray-200 rounded-tl-none border border-white/5"
                   }`}
                 >
-                  {msg.content}
+                  {msg.role !== "user" &&
+                  msg.isNew &&
+                  idx === messages.length - 1 ? (
+                    <Typewriter text={msg.content} speed={15} />
+                  ) : (
+                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                  )}
                 </div>
               </div>
             ))
           )}
 
-          {/* --- AI THINKING BUBBLE (Only when 'loading' is true) --- */}
+          {/* --- AI THINKING BUBBLE--- */}
           {loading && (
             <div className="flex gap-4 animate-pulse">
               <div className="w-8 h-8 rounded-full bg-emerald-600/50 flex items-center justify-center shrink-0">
@@ -285,7 +305,7 @@ const Tutor = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 3. INPUT AREA */}
+        {/*  INPUT AREA */}
         <div className="p-4 bg-gray-950 border-t border-white/5 shrink-0 z-20">
           <form
             onSubmit={handleSend}

@@ -126,13 +126,13 @@ const QuizResults = ({
       <div className="flex flex-col sm:flex-row gap-4 justify-center sticky bottom-4 bg-gray-950/90 backdrop-blur-md p-4 rounded-full border border-white/10 shadow-2xl">
         <button
           onClick={onNewFile}
-          className="px-6 py-2 bg-white text-gray-900 hover:bg-gray-200 rounded-full font-bold transition flex items-center gap-2 text-sm"
+          className="cursor-pointer px-6 py-2 bg-white text-gray-900 hover:bg-gray-200 rounded-full font-bold transition flex items-center gap-2 text-sm"
         >
           <BookOpen className="w-4 h-4" /> New File
         </button>
         <button
           onClick={onNewTopic}
-          className="px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-500 rounded-full font-bold transition flex items-center gap-2 text-sm"
+          className="cursor-pointer px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-500 rounded-full font-bold transition flex items-center gap-2 text-sm"
         >
           <RefreshCw className="w-4 h-4" /> New Topic
         </button>

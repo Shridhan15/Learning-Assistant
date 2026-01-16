@@ -199,25 +199,24 @@ def list_files(user_id: str = Header(None)):
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
     try:
-        # 1. Create a Unique Filename
+        #  Create a Unique Filename
         # Replace spaces to avoid URL encoding issues
         clean_name = file.filename.replace(" ", "_")
         unique_filename = f"{user_id}_{clean_name}"
         
-        # 2. Update Path to use Unique Name (Prevents local temp overwrite)
+        #  Update Path to use Unique Name  
         path = f"{UPLOAD_DIR}/{unique_filename}"
         
         with open(path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 3. Check if THIS unique file already exists
+        #  Check if THIS unique file already exists
         # We now check against 'unique_filename' instead of raw 'file.filename'
         existing = supabase.table("documents").select("filename")\
             .eq("filename", unique_filename)\
             .execute()
             
-        if not existing.data:
-            # If new, process it
+        if not existing.data: 
             documents = load_pdf(path)
             chunks = chunk_text(documents)
             
@@ -248,7 +247,7 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
         raise HTTPException(status_code=500, detail=str(e))   
     
 
-    
+
 @app.get("/results")
 def get_user_results(user_id: str = Header(None)):
     if not user_id:
