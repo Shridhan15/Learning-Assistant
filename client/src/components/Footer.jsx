@@ -33,17 +33,17 @@ const Footer = () => {
         {/* Right Side: Social Links */}
         <div className="flex items-center gap-4">
           <SocialLink
-            href="https://github.com"
+            href="https://github.com/Shridhan15"
             icon={<Github className="w-4 h-4" />}
             label="GitHub"
           />
           <SocialLink
-            href="https://linkedin.com"
+            href="https://www.linkedin.com/in/shridhan-suman-3970a3293/"
             icon={<Linkedin className="w-4 h-4" />}
             label="LinkedIn"
           />
           <SocialLink
-            href="https://your-portfolio-url.com"
+            href="https://portfolio-chi-ecru-34.vercel.app/"
             icon={<Globe className="w-4 h-4" />}
             label="Portfolio"
           />
