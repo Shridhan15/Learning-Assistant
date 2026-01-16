@@ -40,6 +40,7 @@ const QuizAssistant = ({ getToken, userId }) => {
   const [quizData, setQuizData] = useState([]);
   const [userAnswers, setUserAnswers] = useState({});
   const [score, setScore] = useState(0);
+  const [takingQuiz, setTakingQuiz] = useState(false);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -140,6 +141,7 @@ const QuizAssistant = ({ getToken, userId }) => {
       if (data.questions && data.questions.length > 0) {
         setQuizData(data.questions);
         setStep(3);
+        setTakingQuiz(true);
       } else {
         alert("The AI couldn't find relevant info for this topic.");
       }
@@ -172,6 +174,7 @@ const QuizAssistant = ({ getToken, userId }) => {
           } else {
             alert("The AI couldn't find relevant info for this topic.");
             setStep(2); // Fallback to topic selection
+            setTakingQuiz(false);
           }
         } catch (e) {
           console.error(e);
@@ -228,12 +231,14 @@ const QuizAssistant = ({ getToken, userId }) => {
     setUserAnswers({});
     setScore(0);
     fetchFiles();
+    setTakingQuiz(false);
   };
 
   const restartTopic = () => {
     setStep(2);
     setQuizData([]);
     setScore(0);
+    setTakingQuiz(false);
     setUserAnswers({});
   };
 
@@ -264,74 +269,78 @@ const QuizAssistant = ({ getToken, userId }) => {
 
       {/* --- Main Glass Container (Split Layout) --- */}
       <div className="w-full max-w-6xl h-[85vh] bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative z-10 overflow-hidden flex flex-col md:flex-row ring-1 ring-white/5 animate-in fade-in zoom-in duration-500">
-        <div className="w-full md:w-60 lg:w-80 bg-slate-950/50 border-b md:border-b-0 md:border-r border-white/5 flex flex-col">
-          {/* Sidebar Header */}
-          <div className="p-6 border-b border-white/5">
-            <div className="flex items-center gap-3 text-white mb-1">
-              <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
-                <Library className="w-5 h-5" />
+        {!takingQuiz && (
+          <div className="w-full md:w-60 lg:w-80 bg-slate-950/50 border-b md:border-b-0 md:border-r border-white/5 flex flex-col">
+            {/* Sidebar Header */}
+            <div className="p-6 border-b border-white/5">
+              <div className="flex items-center gap-3 text-white mb-1">
+                <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
+                  <Library className="w-5 h-5" />
+                </div>
+                <h2 className="font-bold text-lg tracking-tight">
+                  Your Library
+                </h2>
               </div>
-              <h2 className="font-bold text-lg tracking-tight">Your Library</h2>
+              <p className="text-xs text-slate-500 ml-1">
+                Select a document to quiz yourself
+              </p>
             </div>
-            <p className="text-xs text-slate-500 ml-1">
-              Select a document to quiz yourself
-            </p>
-          </div>
 
-          <div className="flex-1 overflow-y-auto p-4 no-scrollbar space-y-2">
-            {availableFiles.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-500 py-10 opacity-60">
-                <BookOpen className="w-10 h-10 mb-3" />
-                <p className="text-sm">No files yet</p>
-              </div>
-            ) : (
-              availableFiles.map((fname) => (
-                <button
-                  key={fname}
-                  onClick={() => handleSelectFromLibrary(fname)}
-                  className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
+            <div className="flex-1 overflow-y-auto p-4 no-scrollbar space-y-2">
+              {availableFiles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 py-10 opacity-60">
+                  <BookOpen className="w-10 h-10 mb-3" />
+                  <p className="text-sm">No files yet</p>
+                </div>
+              ) : (
+                availableFiles.map((fname) => (
+                  <button
+                    key={fname}
+                    onClick={() => handleSelectFromLibrary(fname)}
+                    className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
                     ${
                       file?.name === fname
                         ? "bg-indigo-600/10 border-indigo-500/50 ring-1 ring-indigo-500/20"
                         : "bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10"
                     }`}
-                >
-                  <div
-                    className={`p-2 rounded-lg transition-colors ${
-                      file?.name === fname
-                        ? "bg-indigo-500 text-white"
-                        : "bg-slate-800 text-slate-400 group-hover:text-indigo-400"
-                    }`}
                   >
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4
-                      className={`text-sm font-medium truncate ${
+                    <div
+                      className={`p-2 rounded-lg transition-colors ${
                         file?.name === fname
-                          ? "text-indigo-100"
-                          : "text-slate-300 group-hover:text-white"
+                          ? "bg-indigo-500 text-white"
+                          : "bg-slate-800 text-slate-400 group-hover:text-indigo-400"
                       }`}
                     >
-                      {getDisplayName(fname, user?.id)}
-                    </h4>
-                  </div>
-                  {file?.name === fname && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
-                  )}
-                </button>
-              ))
-            )}
-          </div>
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4
+                        className={`text-sm font-medium truncate ${
+                          file?.name === fname
+                            ? "text-indigo-100"
+                            : "text-slate-300 group-hover:text-white"
+                        }`}
+                      >
+                        {getDisplayName(fname, user?.id)}
+                      </h4>
+                    </div>
+                    {file?.name === fname && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
 
-          {/* Bottom Info (Optional) */}
-          <div className="p-4 border-t border-white/5 text-center">
-            <p className="text-[10px] text-slate-600">
-              {availableFiles.length} Document
-              {availableFiles.length !== 1 && "s"} Available
-            </p>
+            {/* Bottom Info (Optional) */}
+            <div className="p-4 border-t border-white/5 text-center">
+              <p className="text-[10px] text-slate-600">
+                {availableFiles.length} Document
+                {availableFiles.length !== 1 && "s"} Available
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex-1 flex flex-col h-full relative overflow-y-auto no-scrollbar">
           {/* Decorative Header Background */}

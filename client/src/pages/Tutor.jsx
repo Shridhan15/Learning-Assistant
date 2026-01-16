@@ -178,7 +178,7 @@ const Tutor = () => {
             </div>
           ) : (
             files.map((file) => (
-              <button 
+              <button
                 key={file}
                 onClick={() => {
                   if (selectedFile !== file) {
@@ -213,6 +213,9 @@ const Tutor = () => {
                     {getDisplayName(file, user?.id)}
                   </h4>
                 </div>
+                {file === selectedFile && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
+                )}
               </button>
             ))
           )}
@@ -220,12 +223,10 @@ const Tutor = () => {
 
         {/* Sidebar Footer */}
         <div className="p-5 border-t border-white/5 bg-gray-900/30">
-           
-
           <div className="text-center space-y-1">
             <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
-              Made
-              by <span className="text-indigo-400 font-medium">Shridhan</span>
+              Made by{" "}
+              <span className="text-indigo-400 font-medium">Shridhan</span>
             </p>
             <p className="text-[10px] text-gray-600">
               © 2026 AI Quiz Master Project

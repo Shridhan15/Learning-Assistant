@@ -35,7 +35,7 @@ const Navbar = () => {
               />
             </div>
 
-            <span className="font-semibold text-white">QuizMaster</span>
+            <span className="font-semibold text-white">StudyMate</span>
           </Link>
 
           <div className="hidden md:flex items-center space-x-1 bg-white/5 rounded-full p-1 border border-white/5">
