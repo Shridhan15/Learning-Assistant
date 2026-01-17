@@ -23,7 +23,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [groupedResults, setGroupedResults] = useState({});
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-   
+
   useEffect(() => {
     fetchResults();
   }, []);
@@ -77,9 +77,11 @@ const Home = () => {
         </div>
         <button
           onClick={() => navigate("/quiz")}
-          className="cursor-pointer  px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-all flex items-center gap-2 border border-white/10"
+          className="cursor-pointer px-3 py-2 sm:px-6 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-all flex items-center gap-2 border border-white/10 text-sm sm:text-base"
         >
-          <BookOpen className="w-4 h-4" /> New Quiz
+          <BookOpen className="w-4 h-4" />
+          <span className="sm:hidden">Quiz</span>
+          <span className="hidden sm:inline">New Quiz</span>
         </button>
       </div>
 
