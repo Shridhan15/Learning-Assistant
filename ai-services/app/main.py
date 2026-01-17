@@ -1,6 +1,7 @@
 import os
 import json
 import instructor
+from fastapi import HTTPException
 
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header
@@ -11,7 +12,7 @@ from groq import Groq
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from typing import List
+from typing import List, Optional
 
 from supabase import create_client, Client 
 
@@ -348,3 +349,98 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
         print(f"Error calling Groq: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate quiz")
     
+    
+
+ 
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+ 
+class CoachRequest(BaseModel):
+    userId: str
+    message: str
+    mode: str = "coach"
+    history: List[ChatMessage] = [] # Defaults to empty list
+
+
+class AssistantReply(BaseModel):
+    reply: str = Field(description="The spoken response from the coach to the user.")
+
+
+@app.post("/api/voice/coach")
+async def voice_coach(req: CoachRequest):
+    try:
+        try:
+            results_response = supabase.table("quiz_results")\
+                .select("*")\
+                .eq("user_id", req.userId)\
+                .order("created_at", desc=True)\
+                .limit(5)\
+                .execute()
+            
+            recent_scores = results_response.data
+            
+            print(f"📊 User's Quiz History: {recent_scores}") 
+
+        except Exception as db_err:
+            print(f"❌ DB Error: {db_err}")
+            recent_scores = []
+        
+        #  Format Context
+        if recent_scores:
+            stats_context = "Here are the user's last 5 quiz scores:\n"
+            for r in recent_scores:
+                # Using .get() is safe if columns are missing
+                stats_context += f"- Topic: {r.get('topic')}, Score: {r.get('score')}/{r.get('total_questions')}\n"
+        else:
+            stats_context = "The user has not taken any quizzes yet."
+ 
+        system_prompt = f"""
+        You are a **Performance Coach and Mentor**. You are NOT a teacher or tutor. You help students to focus on their studies guides them like a coach but you can't teach any chapter or topic for that purpose AI Tutor is there.
+        
+        **Your Goal:** Discuss the user's study habits, motivation, and recent quiz performance. 
+        Help them identify weak areas based on the stats provided.
+        **Whenever user greets, greet in response, ask them how they are doing with their studies etc**
+
+        **CRITICAL RULES:**
+        1. **NO TEACHING:** If the user asks you to explain a concept, teach a topic, or summarize a document, you MUST politely refuse. 
+           - Say exactly: "For detailed explanations, please ask the AI Tutor. I'm here to help you track your progress."
+        2. **Be Concise:** You are a voice assistant. Keep answers short (1-2 sentences max).
+        3. **Tone:** Encouraging, professional, analytical, but warm.
+        4. **Use Data:** Refer to their recent scores if relevant.
+        5. **If user asks how can I improve my performance(in any topic, book) tell user to ask AI Tutor for easy and detailed explanation of any topic.
+
+        **User's Recent Stats:**
+        {stats_context}
+        """
+ 
+        
+        messages_to_send = [{"role": "system", "content": system_prompt}]
+        
+        # Add History
+        for msg in req.history:
+            messages_to_send.append({"role": msg.role, "content": msg.content})
+            
+        # Add Current User Message
+        messages_to_send.append({"role": "user", "content": req.message})
+
+        # Call LLM
+        coach_response = client.chat.completions.create(
+            messages=messages_to_send,
+            model="llama-3.3-70b-versatile",
+            temperature=0.6,
+            max_tokens=150,
+            response_model=AssistantReply,
+        )
+        #  Extract the clean text
+        reply_text = coach_response.reply
+
+        print(f"🤖 Coach Reply: {reply_text}")
+
+        return {"replyText": reply_text}
+
+    except Exception as e:
+        print(f"Coach Error: {e}")
+        # Return a generic error message so the frontend doesn't crash
+        raise HTTPException(status_code=500, detail=f"Coach processing failed: {str(e)}")

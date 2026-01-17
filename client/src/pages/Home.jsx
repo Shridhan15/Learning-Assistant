@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import ResultsGrid from "../components/ResultsGrid";
+import { useUser } from "@clerk/clerk-react";
 
 import {
   BookOpen,
@@ -10,18 +11,19 @@ import {
   ArrowRight,
   Loader2,
   BrainCircuit,
-  
 } from "lucide-react";
 import EmptyState from "../components/EmptyState";
 import PageLoading from "../components/PageLoading";
+import VoiceAssistant from "../components/VoiceAssistant";
 
 const Home = () => {
+  const { user, isLoaded } = useUser();
   const { getToken, userId } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [groupedResults, setGroupedResults] = useState({});
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-
+   
   useEffect(() => {
     fetchResults();
   }, []);
@@ -80,6 +82,8 @@ const Home = () => {
           <BookOpen className="w-4 h-4" /> New Quiz
         </button>
       </div>
+
+      <VoiceAssistant userId={user.id} />
 
       <ResultsGrid groupedResults={groupedResults} />
     </div>
