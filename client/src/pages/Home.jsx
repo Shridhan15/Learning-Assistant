@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import ResultsGrid from "../components/ResultsGrid";
@@ -11,11 +11,14 @@ import {
   ArrowRight,
   Loader2,
   BrainCircuit,
+  Sparkle,
 } from "lucide-react";
 import EmptyState from "../components/EmptyState";
 import PageLoading from "../components/PageLoading";
 import VoiceAssistant from "../components/VoiceAssistant";
-import TodaysHighlights from "../components/TodaysHighlights";
+import TodaysHighlights, {
+  isBetween10pmAnd12amLocal,
+} from "../components/TodaysHighlights";
 
 const Home = () => {
   const { user, isLoaded } = useUser();
@@ -25,6 +28,8 @@ const Home = () => {
   const [groupedResults, setGroupedResults] = useState({});
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
+  const showHighlights = useMemo(() => isBetween10pmAnd12amLocal(), []);
+
   useEffect(() => {
     fetchResults();
   }, []);
@@ -32,7 +37,7 @@ const Home = () => {
   const fetchResults = async () => {
     try {
       const token = await getToken();
-      
+
       const response = await fetch(`${API_BASE_URL}/results`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -40,7 +45,7 @@ const Home = () => {
         },
       });
       const data = await response.json();
- 
+
       const grouped = data.results.reduce((acc, item) => {
         if (!acc[item.filename]) {
           acc[item.filename] = [];
@@ -67,12 +72,23 @@ const Home = () => {
 
   const allResults = Object.values(groupedResults).flat();
 
-
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
-      <TodaysHighlights results={allResults} />
+      {showHighlights && allResults.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+             
+            <div>
+              <h3 className="text-3xl font-bold text-white">Daily Recap</h3>
+              <p className=" text-gray-400">
+                Your performance summary for today
+              </p>
+            </div>
+          </div>
+          <TodaysHighlights results={allResults} />
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Your Progress</h1>
@@ -80,7 +96,6 @@ const Home = () => {
             Track your performance across your library
           </p>
         </div>
-        
       </div>
 
       <VoiceAssistant userId={user.id} />
