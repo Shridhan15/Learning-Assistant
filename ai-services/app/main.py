@@ -361,14 +361,14 @@ class CoachRequest(BaseModel):
     userId: str
     message: str
     mode: str = "coach"
-    history: List[ChatMessage] = [] # Defaults to empty list
+    history: List[ChatMessage] = []  
 
 
 class AssistantReply(BaseModel):
     reply: str = Field(description="The spoken response from the coach to the user.")
 
 
-@app.post("/api/voice/coach")
+@app.post("/coach")
 async def voice_coach(req: CoachRequest):
     try:
         try:

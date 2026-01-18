@@ -54,7 +54,7 @@ export default function useVoiceAssistant() {
         setMode("thinking");
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/voice/coach`, {
+            const response = await fetch(`${API_BASE_URL}/coach`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
