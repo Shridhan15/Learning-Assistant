@@ -12,13 +12,13 @@ const PageLoading = () => {
       <div className="relative flex flex-col items-center gap-6 z-10">
         {/* Spinner Wrapper */}
         <div className="relative w-24 h-24 flex items-center justify-center">
-          {/* Outer Ring 1 (Fast  Spin) */}
+          {/* Outer Ring 1*/}
           <div className="absolute inset-0 w-full h-full border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
 
-          {/* Inner Ring 2 (Slower  Spin) */}
+          {/* Inner Ring 2   */}
           <div className="absolute inset-3 w-[75%] h-[75%] border-4 border-purple-500/10 border-b-purple-500/50 rounded-full animate-spin [animation-duration:1.5s]" />
 
-          {/* Logo Image (Static Center) */}
+          {/* Logo Image */}
           <div className="relative z-10 w-12 h-12 rounded-full overflow-hidden shadow-lg shadow-indigo-500/20 bg-slate-900 flex items-center justify-center">
             <img
               src={images.logo}  

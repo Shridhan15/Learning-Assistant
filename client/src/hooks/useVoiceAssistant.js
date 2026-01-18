@@ -43,7 +43,7 @@ export default function useVoiceAssistant() {
                 if (!isProcessingRef.current && liveText.trim().length > 2) {
                     isProcessingRef.current = true;
                     stopNativeListening();
-                    console.log("🎤 Final User Text:", liveText);
+                    console.log(" Final User Text:", liveText);
                     processRequest(liveText, userId);
                 }
             }, 1500);
@@ -70,7 +70,7 @@ export default function useVoiceAssistant() {
             const data = await response.json();
             const reply = data.replyText;
 
-            console.log("🤖 AI Replied:", reply);
+            console.log(" AI Replied:", reply);
             setHistory((prev) => {
                 const newHistory = [
                     ...prev,

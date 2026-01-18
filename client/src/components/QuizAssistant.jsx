@@ -108,10 +108,9 @@ const QuizAssistant = ({ getToken, userId }) => {
   };
 
    
-  const handleSelectFromLibrary = (filename) => {
-    // Check if the selected file is different from the current one
+  const handleSelectFromLibrary = (filename) => { 
     if (file?.name !== filename) {
-      setTopic(""); // Only clear topic if it's a new file
+      setTopic(""); 
     }
 
     setFile({ name: filename });
@@ -163,7 +162,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         setIsLoading(true);  
 
         try {
-          // Call your generation logic directly here to ensure control flow
+          // Call  generation logic directly here to ensure control flow
           const token = await getToken();
           const data = await generateQuizApi(token, userId, filename, topic);
 
@@ -173,16 +172,15 @@ const QuizAssistant = ({ getToken, userId }) => {
             setTakingQuiz(true);
           } else {
             alert("The AI couldn't find relevant info for this topic.");
-            setStep(2); // Fallback to topic selection
+            setStep(2);  
             setTakingQuiz(false);
           }
         } catch (e) {
           console.error(e);
-          setStep(2); // Fallback on error
+          setStep(2); 
         } finally { 
           setIsAutoStarting(false);
-          setIsLoading(false);
-          // Clear router state so refresh doesn't re-trigger
+          setIsLoading(false); 
           window.history.replaceState({}, document.title);
         }
       }

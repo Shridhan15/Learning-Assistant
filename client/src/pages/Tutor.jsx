@@ -45,8 +45,7 @@ const Tutor = () => {
   const scrollToBottom = () => {
     const el = chatContainerRef.current;
     if (!el) return;
-
-    // scroll inside messages container only
+ 
     el.scrollTo({
       top: el.scrollHeight,
       behavior: "smooth",
@@ -236,8 +235,7 @@ const Tutor = () => {
         </div>
       </div>
 
-      {/* --- MOBILE SIDEBAR --- */}
-      {/* Overlay */}
+      {/* --- MOBILE SIDEBAR --- */} 
       {isMobileSidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
@@ -291,8 +289,7 @@ const Tutor = () => {
                   if (selectedFile !== file) {
                     setSelectedFile(file);
                     loadChatHistory(file);
-                  }
-                  // close drawer after selecting file
+                  } 
                   setIsMobileSidebarOpen(false);
                 }}
                 className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
@@ -344,7 +341,7 @@ const Tutor = () => {
         </div>
       </div>
 
-      {/* --- RIGHT PANEL (Chat) --- */}
+      {/* --- RIGHT PANEL  --- */}
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-950 relative">
         {/* Header */}
         {selectedFile && (

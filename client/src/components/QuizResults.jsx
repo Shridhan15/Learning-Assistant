@@ -5,8 +5,8 @@ const QuizResults = ({
   quizData,
   userAnswers,
   score,
-  onNewFile, // maps to resetApp
-  onNewTopic, // maps to restart topic logic
+  onNewFile,  
+  onNewTopic,  
 }) => {
   const percentage = Math.round((score / quizData.length) * 100);
   const isPassing = score / quizData.length >= 0.7;

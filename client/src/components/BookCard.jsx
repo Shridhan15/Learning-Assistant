@@ -18,7 +18,7 @@ const BookCard = ({ filename, quizzes }) => {
   const navigate = useNavigate();
   const { user } = useUser();
   const displayName = getDisplayName(filename, user?.id);
-  // --- LOGIC: Identify Weak Areas ---
+  // --- Identify Weak Areas ---
   const getBookInsights = (quizList) => {
     const topicPerformance = {};
 
@@ -46,7 +46,7 @@ const BookCard = ({ filename, quizzes }) => {
 
   const weakTopics = getBookInsights(quizzes);
 
-  // --- LOGIC: Calculate Overall Mastery ---
+  // --- Calculate Overall Mastery ---
   const totalScore = quizzes.reduce(
     (acc, q) => acc + (q.score / q.total_questions) * 100,
     0
@@ -82,16 +82,11 @@ const BookCard = ({ filename, quizzes }) => {
           </div>
         </div>
 
-        {/* <div className="flex items-center gap-2">
-          <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
-            <MoreVertical className="w-5 h-5" />
-          </button>
-        </div> */}
       </div>
 
       {/* --- 2. THE SPLIT LAYOUT --- */}
       <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-white/5">
-        {/* LEFT SIDE: Recent Activity (60%) */}
+        {/* LEFT SIDE: Recent Activity  */}
         <div className="lg:col-span-3 p-6 flex flex-col">
           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
             <Calendar className="w-3 h-3" /> Recent Activity
@@ -126,15 +121,14 @@ const BookCard = ({ filename, quizzes }) => {
           </div>
         </div>
 
-        {/* RIGHT SIDE: Insights & Actions (40%) */}
+        {/* RIGHT SIDE: Insights & Actions */}
         <div className="lg:col-span-2 p-6 bg-black/20 flex flex-col">
           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
             <Target className="w-3 h-3" />
             {weakTopics.length > 0 ? "Focus Areas" : "Insights"}
           </h4>
 
-          {weakTopics.length > 0 ? (
-            // Layout for "Focus Areas"
+          {weakTopics.length > 0 ? ( 
             <div className="flex-1 flex flex-col">
               <div className="mb-4">
                 <p className="text-xs text-gray-400 leading-relaxed">

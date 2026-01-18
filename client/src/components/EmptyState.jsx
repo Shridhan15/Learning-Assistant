@@ -6,7 +6,7 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom"; // Assuming you use react-router
+import { useNavigate } from "react-router-dom"; 
 import { images } from "../assets/assets";
 
 const EmptyState = () => {
@@ -39,9 +39,7 @@ const EmptyState = () => {
       <p className="text-slate-400 max-w-lg text-center mb-10 leading-relaxed">
         You haven't taken any quizzes yet. Upload your study material and let
         our AI generate personalized questions to help you master the subject.
-      </p>
-
-      {/* --- "How it Works" Mini Steps --- */}
+      </p> 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl mb-10">
         <StepCard
           icon={<Upload className="w-4 h-4 text-emerald-400" />}

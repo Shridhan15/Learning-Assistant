@@ -436,7 +436,7 @@ async def voice_coach(req: CoachRequest):
         #  Extract the clean text
         reply_text = coach_response.reply
 
-        print(f"🤖 Coach Reply: {reply_text}")
+        print(f"Coach Reply: {reply_text}")
 
         return {"replyText": reply_text}
 

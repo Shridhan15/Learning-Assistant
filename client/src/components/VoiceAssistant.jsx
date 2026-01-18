@@ -25,14 +25,10 @@ export default function VoiceAssistant({ userId }) {
       stopAssistant();
     }
   };
-
-  // --- Premium Styling Logic ---
-
-  // Tighter padding (pr-6 pl-2), smaller gap (gap-3), and slightly reduced height (h-14)
+ 
   const baseButtonClasses =
     "cursor-pointer relative group flex items-center gap-3 pr-6 pl-2 h-14 rounded-full border transition-all duration-500 ease-out shadow-2xl overflow-hidden";
-
-  // State-specific visual configurations
+ 
   let stateStyles = {
     container:
       "bg-slate-900/40 border-white/10 hover:border-white/20 hover:bg-slate-800/50 shadow-black/20 backdrop-blur-xl",
