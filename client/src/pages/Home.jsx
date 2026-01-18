@@ -40,8 +40,7 @@ const Home = () => {
         },
       });
       const data = await response.json();
-
-      // Turn flat list into { "book1.pdf": [quiz1, quiz2], ... }
+ 
       const grouped = data.results.reduce((acc, item) => {
         if (!acc[item.filename]) {
           acc[item.filename] = [];

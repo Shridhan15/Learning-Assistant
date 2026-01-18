@@ -107,7 +107,7 @@ const QuizAssistant = ({ getToken, userId }) => {
     }
   };
 
-  // SELECT EXISTING
+   
   const handleSelectFromLibrary = (filename) => {
     // Check if the selected file is different from the current one
     if (file?.name !== filename) {
@@ -119,7 +119,6 @@ const QuizAssistant = ({ getToken, userId }) => {
   };
 
   //  GENERATE QUIZ
-  // GENERATE QUIZ (Updated to accept optional params)
   const generateQuiz = async (overrideFile = null, overrideTopic = null) => {
     const activeFile = overrideFile || file;
     const activeTopic = overrideTopic || topic;
@@ -161,7 +160,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         // Update local state for context
         setFile({ name: filename });
         setTopic(topic);
-        setIsLoading(true); // Ensure loader shows
+        setIsLoading(true);  
 
         try {
           // Call your generation logic directly here to ensure control flow
@@ -170,7 +169,8 @@ const QuizAssistant = ({ getToken, userId }) => {
 
           if (data.questions && data.questions.length > 0) {
             setQuizData(data.questions);
-            setStep(3); // Jump straight to quiz
+            setStep(3); 
+            setTakingQuiz(true);
           } else {
             alert("The AI couldn't find relevant info for this topic.");
             setStep(2); // Fallback to topic selection
@@ -179,8 +179,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         } catch (e) {
           console.error(e);
           setStep(2); // Fallback on error
-        } finally {
-          // --- FIX 3: Turn off the auto-start blocker ---
+        } finally { 
           setIsAutoStarting(false);
           setIsLoading(false);
           // Clear router state so refresh doesn't re-trigger
@@ -476,7 +475,7 @@ const QuizAssistant = ({ getToken, userId }) => {
             {(step === 3 || step === 4) && (
               <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
                 {step === 3 && (
-                  /* Pass props to your QuizViewer component */
+                  
                   <QuizViewer
                     quizData={quizData}
                     userAnswers={userAnswers}
@@ -486,7 +485,7 @@ const QuizAssistant = ({ getToken, userId }) => {
                   />
                 )}
                 {step === 4 && (
-                  /* Pass props to your QuizResults component */
+                  
                   <QuizResults
                     quizData={quizData}
                     userAnswers={userAnswers}

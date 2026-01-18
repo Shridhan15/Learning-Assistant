@@ -20,7 +20,6 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-950/80 backdrop-blur-md border-b border-white/10 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          
           {/* --- LOGO --- */}
           <Link
             to="/"
@@ -34,10 +33,12 @@ const Navbar = () => {
                 className="w-10 h-10 object-contain"
               />
             </div>
-            <span className="font-semibold text-white tracking-tight hidden xs:block">StudyMate</span>
+            <span className="font-semibold text-white tracking-tight hidden sm:block">
+              StudyMate
+            </span>
           </Link>
 
-          {/* --- DESKTOP NAVIGATION (Hidden on Mobile) --- */}
+          {/* ---  (Hidden on Mobile) --- */}
           <div className="hidden md:flex items-center space-x-1 bg-white/5 rounded-full p-1 border border-white/5">
             {navItems.map((item) => (
               <Link
@@ -55,17 +56,18 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* --- RIGHT SIDE (User Button + Mobile Toggle) --- */}
+          {/* --- RIGHT SIDE  --- */}
           <div className="flex items-center gap-4">
             {/* User Profile */}
             <div className="flex items-center">
-                <ClerkUserButton
+              <ClerkUserButton
                 appearance={{
-                    elements: {
-                    avatarBox: "w-9 h-9 border-2 border-indigo-500/30 hover:border-indigo-400 transition-colors",
-                    },
+                  elements: {
+                    avatarBox:
+                      "w-9 h-9 border-2 border-indigo-500/30 hover:border-indigo-400 transition-colors",
+                  },
                 }}
-                />
+              />
             </div>
 
             {/* Mobile Menu Button */}
@@ -86,7 +88,9 @@ const Navbar = () => {
       {/* --- MOBILE MENU DROPDOWN --- */}
       <div
         className={`md:hidden absolute left-0 right-0 bg-[#0a0a0b] border-b border-white/10 transition-all duration-300 ease-in-out overflow-hidden ${
-          isMobileMenuOpen ? "max-h-64 opacity-100 py-4" : "max-h-0 opacity-0 py-0"
+          isMobileMenuOpen
+            ? "max-h-64 opacity-100 py-4"
+            : "max-h-0 opacity-0 py-0"
         }`}
       >
         <div className="px-4 space-y-2">
@@ -94,7 +98,7 @@ const Navbar = () => {
             <Link
               key={item.name}
               to={item.path}
-              onClick={() => setIsMobileMenuOpen(false)} // Close menu on click
+              onClick={() => setIsMobileMenuOpen(false)}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all duration-200 ${
                 location.pathname === item.path
                   ? "bg-indigo-600/10 text-indigo-400 border border-indigo-500/20"

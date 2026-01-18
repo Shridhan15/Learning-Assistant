@@ -1,9 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";  
 import useSpeech from "./useSpeech";
 
 export default function useVoiceAssistant() {
     const [mode, setMode] = useState("idle");
-    const [history, setHistory] = useState([]); // ✅ 1. New History State
+    const [history, setHistory] = useState([]);
 
     const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -13,12 +13,19 @@ export default function useVoiceAssistant() {
         speak,
         stopSpeaking: stopNativeSpeaking,
         isListening,
-        isSpeaking,
-        speechError
+        isSpeaking, 
+        speechError,
     } = useSpeech();
 
     const isProcessingRef = useRef(false);
     const silenceTimerRef = useRef(null);
+
+    // Automatically sync state when speech ends
+    useEffect(() => { 
+        if (!isSpeaking && mode === "speaking") {
+            setMode("idle");
+        }
+    }, [isSpeaking, mode]);
 
     const startAssistant = (userId) => {
         if (!userId) {
@@ -47,7 +54,6 @@ export default function useVoiceAssistant() {
         setMode("thinking");
 
         try {
-            // ✅ 2. Send current history along with the new message
             const response = await fetch(`${API_BASE_URL}/api/voice/coach`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -55,7 +61,7 @@ export default function useVoiceAssistant() {
                     userId: userId,
                     message: text,
                     mode: "coach",
-                    history: history // Pass the conversation so far
+                    history: history,
                 }),
             });
 
@@ -65,19 +71,19 @@ export default function useVoiceAssistant() {
             const reply = data.replyText;
 
             console.log("🤖 AI Replied:", reply);
-
-            // ✅ 3. Update History (Session based, max 10 items)
-            setHistory(prev => {
+            setHistory((prev) => {
                 const newHistory = [
                     ...prev,
                     { role: "user", content: text },
-                    { role: "assistant", content: reply }
+                    { role: "assistant", content: reply },
                 ];
-                return newHistory.slice(-10); // Keep only last 10 messages
+                return newHistory.slice(-10);
             });
 
             setMode("speaking");
             await speak(reply);
+
+            
 
         } catch (error) {
             console.error("Assistant Error:", error);
@@ -95,10 +101,10 @@ export default function useVoiceAssistant() {
         isProcessingRef.current = false;
     };
 
-    return {
+    return { 
         mode: isSpeaking ? "speaking" : mode,
         startAssistant,
         stopAssistant,
-        speechError
+        speechError,
     };
 }

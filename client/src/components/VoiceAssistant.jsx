@@ -1,6 +1,13 @@
 import React from "react";
 import useVoiceAssistant from "../hooks/useVoiceAssistant";
-import { Mic, Square, Loader2, Volume2, AlertCircle } from "lucide-react";
+import {
+  Mic,
+  Square,
+  Loader2,
+  AudioLines,
+  AlertCircle,
+  Sparkles,
+} from "lucide-react";
 
 export default function VoiceAssistant({ userId }) {
   const { mode, startAssistant, stopAssistant, speechError } =
@@ -13,55 +20,112 @@ export default function VoiceAssistant({ userId }) {
 
   const handlePress = () => {
     if (isIdle) {
-      startAssistant(userId); // ✅ Pass UserID here
+      startAssistant(userId);
     } else {
       stopAssistant();
     }
   };
 
-  // Dynamic Styles based on state
-  let buttonColor = "bg-white/10 hover:bg-white/20";
-  let icon = <Mic className="w-6 h-6 text-white" />;
-  let label = "Tap to Talk";
+  // --- Premium Styling Logic ---
+
+  // Tighter padding (pr-6 pl-2), smaller gap (gap-3), and slightly reduced height (h-14)
+  const baseButtonClasses =
+    "cursor-pointer relative group flex items-center gap-3 pr-6 pl-2 h-14 rounded-full border transition-all duration-500 ease-out shadow-2xl overflow-hidden";
+
+  // State-specific visual configurations
+  let stateStyles = {
+    container:
+      "bg-slate-900/40 border-white/10 hover:border-white/20 hover:bg-slate-800/50 shadow-black/20 backdrop-blur-xl",
+    iconContainer: "bg-white/5 group-hover:bg-white/10",
+    icon: <Mic className="w-5 h-5 text-white/90" />,
+    label: "Tap to Talk",
+    glow: "opacity-0",
+    textColor: "text-white/90",
+  };
 
   if (isListening) {
-    buttonColor = "bg-indigo-600 animate-pulse";
-    icon = <Square className="w-6 h-6 text-white fill-current" />;
-    label = "Listening...";
+    stateStyles = {
+      container:
+        "bg-indigo-950/80 border-indigo-500/30 backdrop-blur-2xl shadow-indigo-500/20",
+      iconContainer:
+        "bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-pulse",
+      icon: <Square className="w-4 h-4 fill-current" />,
+      label: "Listening...",
+      glow: "opacity-100 bg-indigo-500/20",
+      textColor: "text-indigo-100",
+    };
   } else if (isThinking) {
-    buttonColor = "bg-yellow-500/80";
-    icon = <Loader2 className="w-6 h-6 text-white animate-spin" />;
-    label = "Thinking...";
+    stateStyles = {
+      container:
+        "bg-amber-950/80 border-amber-500/30 backdrop-blur-2xl shadow-amber-500/20",
+      iconContainer:
+        "bg-gradient-to-tr from-amber-500 to-orange-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]",
+      icon: <Loader2 className="w-5 h-5 animate-spin" />,
+      label: "Thinking...",
+      glow: "opacity-100 bg-amber-500/20",
+      textColor: "text-amber-100",
+    };
   } else if (isSpeaking) {
-    buttonColor = "bg-emerald-600";
-    icon = <Volume2 className="w-6 h-6 text-white animate-bounce" />;
-    label = "Speaking...";
+    stateStyles = {
+      container:
+        "bg-emerald-950/80 border-emerald-500/30 backdrop-blur-2xl shadow-emerald-500/20",
+      // Gentle breathing ring effect
+      iconContainer:
+        "bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.6)] ring-2 ring-emerald-400/50 animate-[pulse_3s_infinite]",
+      icon: <AudioLines className="w-5 h-5" />,
+      label: "Speaking...",
+      glow: "opacity-100 bg-emerald-500/20",
+      textColor: "text-emerald-100",
+    };
   }
 
   return (
-    <div className="fixed bottom-6 right-6 flex flex-col items-end gap-3 z-50">
-      {/* Error Bubble */}
+    <div className="fixed bottom-8 right-8 flex flex-col items-end gap-3 z-50 font-sans">
+      {/* Error Toast */}
       {speechError && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500/90 text-white text-xs mb-2 shadow-lg backdrop-blur-md">
-          <AlertCircle className="w-3 h-3" />
-          {speechError}
+        <div className="animate-in slide-in-from-right-10 fade-in duration-300 flex items-center gap-2 px-3 py-2 rounded-xl bg-red-950/90 border border-red-500/30 text-red-100 text-xs font-medium shadow-lg backdrop-blur-xl mb-1">
+          <AlertCircle className="w-3 h-3 text-red-400" />
+          <span>{speechError}</span>
         </div>
       )}
 
-      {/* Main Button */}
+      {/* Main Interaction Button */}
       <button
         onClick={handlePress}
-        className={`cursor-pointer relative group flex items-center gap-3 pr-6 pl-4 h-14 rounded-full border border-white/10 backdrop-blur-lg shadow-xl transition-all duration-300 ${buttonColor}`}
+        className={`${baseButtonClasses} ${stateStyles.container}`}
       >
-        <div className="w-8 h-8 flex items-center justify-center">{icon}</div>
-        <span className="font-semibold text-white tracking-wide text-sm">
-          {label}
-        </span>
+        {/* Ambient Background Glow */}
+        <div
+          className={`absolute inset-0 blur-2xl transition-opacity duration-500 ${stateStyles.glow}`}
+        />
+
+        {/* Icon Circle */}
+        <div
+          className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${stateStyles.iconContainer}`}
+        >
+          {stateStyles.icon}
+        </div>
+
+        {/* Text Content */}
+        <div className="relative z-10 flex flex-col items-start justify-center h-full">
+          <span
+            className={`font-semibold tracking-wide text-xs transition-colors duration-300 ${stateStyles.textColor}`}
+          >
+            {stateStyles.label}
+          </span>
+        </div>
+
+        {/* Shine Overlay */}
+        <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/10 pointer-events-none" />
       </button>
 
-      <p className="text-[10px] text-white/30 font-medium pr-4">
-        AI Performance Coach
-      </p>
+      {/* Footer Label */}
+      <div className="flex items-center gap-1.5 pr-3 opacity-40 hover:opacity-80 transition-opacity duration-300">
+        <Sparkles className="w-3 h-3 text-indigo-400" />
+        <p className="text-[9px] text-white font-medium uppercase tracking-[0.15em]">
+          AI Performance Coach
+        </p>
+      </div>
     </div>
   );
 }

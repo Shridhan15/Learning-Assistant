@@ -10,8 +10,7 @@ import Login from "./pages/Login";
 import Tutor from "./pages/Tutor";
 import Hero from "./components/Hero";
 import Footer from "./components/Footer";
-
-// --- LAYOUT WRAPPER ---
+ 
 const ProtectedLayout = ({ children }) => {
   const { getToken, userId, isLoaded } = useAuth();
   const location = useLocation();
@@ -40,14 +39,13 @@ const ProtectedLayout = ({ children }) => {
       <main
         className={
           isTutorPage
-            ? "pt-16 w-full flex-1 h-[calc(100vh-4rem)]" // Tutor: Full height minus navbar, no padding
-            : "pt-20 max-w-7xl mx-auto p-4 w-full flex-1" // Others: Standard spacing
+            ? "pt-16 w-full flex-1 h-[calc(100vh-4rem)]"  
+            : "pt-20 max-w-7xl mx-auto p-4 w-full flex-1"  
         }
       >
         {childrenWithProps}
       </main>
-
-      {/* FIX: Only show Global Footer if NOT on Tutor page */}
+ 
       {!isTutorPage && <Footer />}
     </div>
   );

@@ -31,7 +31,7 @@ function getStartOfTodayLocal() {
 function isBetween10pmAnd12amLocal() {
   const now = new Date();
   const h = now.getHours();
-  return h >= 10 && h < 13;
+  return h >= 10 && h < 18;
 }
 
 function StatChip({ icon: Icon, label, value, hint }) {
@@ -53,8 +53,8 @@ export default function TodaysHighlights({ results = [] }) {
   const todaysResults = useMemo(() => {
     const now = new Date();
     const start = new Date(now);
-    start.setDate(now.getDate() - 2); // ✅ include past 2 days
-    start.setHours(0, 0, 0, 0); // start from 12 AM of that day
+    start.setDate(now.getDate() - 2); 
+    start.setHours(0, 0, 0, 0); 
 
     return (results || []).filter((r) => {
       const t = new Date(r.created_at);

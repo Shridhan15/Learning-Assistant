@@ -1,9 +1,7 @@
-// src/services/azureSpeechApi.js
 
 const SPEECH_KEY = import.meta.env.VITE_AZURE_SPEECH_KEY;
 const SPEECH_REGION = import.meta.env.VITE_AZURE_REGION;
-
-// Azure requires an Access Token first
+ 
 const getAccessToken = async () => {
     const response = await fetch(
         `https://${SPEECH_REGION}.api.cognitive.microsoft.com/sts/v1.0/issueToken`,
@@ -16,7 +14,7 @@ const getAccessToken = async () => {
     );
 
     if (!response.ok) throw new Error("Failed to get Azure Token");
-    return response.text(); // The token is a simple string
+    return response.text();  
 };
 
 export const playAzureAudio = async (text) => {
@@ -25,8 +23,7 @@ export const playAzureAudio = async (text) => {
     // 1. Get the Auth Token
     const token = await getAccessToken();
 
-    // 2. Request the Audio
-    // Azure uses SSML (XML format) to specify voice details
+    // 2. Request the Audio 
     const ssml = `
     <speak version='1.0' xml:lang='en-US'>
       <voice xml:lang='en-US' xml:gender='Female' name='en-US-JennyNeural'>

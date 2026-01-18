@@ -20,11 +20,10 @@ const Footer = () => {
             </span>
           </p>
           <p className="text-slate-500 text-xs mt-1">
-            © {new Date().getFullYear()} AI Quiz Master Project.
+            © {new Date().getFullYear()} AI StudyMate Project.
           </p>
         </div>
-
-        {/* Center/Right: Tech Stack Badge */}
+ 
         <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-xs text-slate-400">
           <Code2 className="w-3 h-3" />
           <span>Built with React & Python</span>

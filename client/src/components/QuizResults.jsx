@@ -1,4 +1,3 @@
-// src/components/QuizResults.jsx
 import React from "react";
 import { CheckCircle, AlertCircle, BookOpen, RefreshCw } from "lucide-react";
 

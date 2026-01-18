@@ -58,7 +58,7 @@ export default function useSpeech() {
             }
 
             const totalText = (final + interim).trim();
-            // We pass the text back to the parent
+            //  pass the text back to the parent
             if (totalText && onResult) {
                 onResult(totalText);
             }

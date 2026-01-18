@@ -38,7 +38,7 @@ const Tutor = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [filesLoading, setFilesLoading] = useState(true);
 
-  // ✅ Auto-scroll (messages only)
+  // Auto-scroll  
   const chatContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -46,7 +46,7 @@ const Tutor = () => {
     const el = chatContainerRef.current;
     if (!el) return;
 
-    // ✅ scroll inside messages container only
+    // scroll inside messages container only
     el.scrollTo({
       top: el.scrollHeight,
       behavior: "smooth",
@@ -230,7 +230,7 @@ const Tutor = () => {
               <span className="text-indigo-400 font-medium">Shridhan</span>
             </p>
             <p className="text-[10px] text-gray-600">
-              © 2026 AI Quiz Master Project
+              © 2026 AI StudyMate Project
             </p>
           </div>
         </div>
@@ -338,7 +338,7 @@ const Tutor = () => {
               <span className="text-indigo-400 font-medium">Shridhan</span>
             </p>
             <p className="text-[10px] text-gray-600">
-              © 2026 AI Quiz Master Project
+              © 2026 AI StudyMate Project
             </p>
           </div>
         </div>
