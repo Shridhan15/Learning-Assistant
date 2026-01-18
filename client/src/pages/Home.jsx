@@ -15,6 +15,7 @@ import {
 import EmptyState from "../components/EmptyState";
 import PageLoading from "../components/PageLoading";
 import VoiceAssistant from "../components/VoiceAssistant";
+import TodaysHighlights from "../components/TodaysHighlights";
 
 const Home = () => {
   const { user, isLoaded } = useUser();
@@ -31,7 +32,7 @@ const Home = () => {
   const fetchResults = async () => {
     try {
       const token = await getToken();
-      // Replace with your actual backend URL
+      
       const response = await fetch(`${API_BASE_URL}/results`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -65,9 +66,14 @@ const Home = () => {
     return <EmptyState />;
   }
 
+  const allResults = Object.values(groupedResults).flat();
+
+
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
+      <TodaysHighlights results={allResults} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Your Progress</h1>
@@ -75,14 +81,7 @@ const Home = () => {
             Track your performance across your library
           </p>
         </div>
-        <button
-          onClick={() => navigate("/quiz")}
-          className="cursor-pointer px-3 py-2 sm:px-6 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-all flex items-center gap-2 border border-white/10 text-sm sm:text-base"
-        >
-          <BookOpen className="w-4 h-4" />
-          <span className="sm:hidden">Quiz</span>
-          <span className="hidden sm:inline">New Quiz</span>
-        </button>
+        
       </div>
 
       <VoiceAssistant userId={user.id} />
