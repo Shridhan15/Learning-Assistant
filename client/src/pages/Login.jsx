@@ -15,7 +15,7 @@ const Login = () => {
           Quiz Master
         </h1>
         <p className="text-gray-400 text-center mb-6 text-sm">
-          Sign in or create an account to continue 🚀
+          Sign in or create an account to continue 
         </p>
 
         <SignIn

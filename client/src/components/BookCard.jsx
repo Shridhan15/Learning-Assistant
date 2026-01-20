@@ -7,17 +7,19 @@ import {
   Target,
   Play,
   MessageCircle,
-  MoreVertical,
   BarChart3,
   Clock,
+  Trash2,  
 } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 import { getDisplayName } from "../utils/fileHelpers";
 
-const BookCard = ({ filename, quizzes }) => {
+// 2. Add 'onDelete' to props
+const BookCard = ({ filename, quizzes, onDelete }) => {
   const navigate = useNavigate();
   const { user } = useUser();
   const displayName = getDisplayName(filename, user?.id);
+
   // --- Identify Weak Areas ---
   const getBookInsights = (quizList) => {
     const topicPerformance = {};
@@ -49,14 +51,27 @@ const BookCard = ({ filename, quizzes }) => {
   // --- Calculate Overall Mastery ---
   const totalScore = quizzes.reduce(
     (acc, q) => acc + (q.score / q.total_questions) * 100,
-    0
+    0,
   );
   const overallMastery = Math.round(totalScore / quizzes.length);
+
+  // --- Handle Delete Click ---
+  const handleDeleteClick = (e) => {
+    e.stopPropagation(); // Prevent navigating to book details if clicking delete
+    if (window.confirm(`Are you sure you want to delete "${displayName}"?`)) {
+      if (onDelete) {
+        onDelete(filename);
+      } else {
+        console.warn("No onDelete prop provided to BookCard");
+      }
+    }
+  };
 
   return (
     <div className="w-full bg-gray-900/50 border border-white/10 rounded-2xl overflow-hidden hover:border-indigo-500/30 transition-all duration-300 shadow-xl shadow-black/20 group">
       {/* 1. Header Row */}
       <div className="px-6 py-4 bg-white/5 border-b border-white/5 flex items-center justify-between">
+        {/* Left Side: Icon & Title */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="p-2.5 bg-indigo-500/20 rounded-xl shrink-0 group-hover:scale-105 transition-transform">
             <BookOpen className="w-5 h-5 text-indigo-400" />
@@ -82,6 +97,14 @@ const BookCard = ({ filename, quizzes }) => {
           </div>
         </div>
 
+        {/* --- 3. RIGHT SIDE: Delete Button --- */}
+        <button
+          onClick={handleDeleteClick}
+          className="ml-4 p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
+          title="Delete Book"
+        >
+          <Trash2 className="cursor-pointer w-5 h-5" />
+        </button>
       </div>
 
       {/* --- 2. THE SPLIT LAYOUT --- */}
@@ -128,7 +151,7 @@ const BookCard = ({ filename, quizzes }) => {
             {weakTopics.length > 0 ? "Focus Areas" : "Insights"}
           </h4>
 
-          {weakTopics.length > 0 ? ( 
+          {weakTopics.length > 0 ? (
             <div className="flex-1 flex flex-col">
               <div className="mb-4">
                 <p className="text-xs text-gray-400 leading-relaxed">

@@ -13,21 +13,39 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import List, Optional
-
+from pinecone import Pinecone, ServerlessSpec
 from supabase import create_client, Client 
+from supabase.client import ClientOptions
 
 load_dotenv()
 
+
+ 
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+INDEX_NAME = "learning-assistant"
+pc = Pinecone(api_key=PINECONE_API_KEY)
 #  RAG functions 
 from app.rag import load_pdf, chunk_text, store_in_pinecone, retrieve
 
 app = FastAPI()
 
- 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+# 1. Initialize normally (don't worry about the slash here yet)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+try:
+    # Convert to string to check it safely
+    current_url_str = str(supabase.storage_url)
+    
+    if current_url_str and not current_url_str.endswith("/"):
+        
+        supabase.storage_url = f"{current_url_str}/"
+        print(f"DEBUG: Patched internal Storage URL to: '{supabase.storage_url}'")
+except Exception as e:
+    print(f"DEBUG: Auto-patch failed ({e}). Proceeding hoping for the best.")
+ 
 #  Groq
 client = instructor.from_groq(Groq(api_key=os.environ.get("GROQ_API_KEY")))
 
@@ -300,9 +318,38 @@ class Question(BaseModel):
 
 
 class QuizResponse(BaseModel):
+    context_summary: str = Field(..., description="A 1-2 sentence summary of the text content.")
     questions: List[Question]
 
  
+
+def clean_context_text(text: str) -> str:
+    # List of keywords that usually mark the end of the story/chapter
+    stop_markers = [
+        "Exercises", "Think as you read", "Understanding the text", 
+        "Vocabulary", "Glossary", "Acknowledgements", "About the Author"
+    ]
+    
+    # Find the earliest occurrence of any marker and cut the text there
+    lowest_index = len(text)
+    found = False
+    
+    for marker in stop_markers:
+        # Case-insensitive search
+        idx = text.lower().find(marker.lower())
+        if idx != -1 and idx < lowest_index:
+            lowest_index = idx
+            found = True
+            
+    # If found, cut the text. If not, return original.
+    if found:
+        # Keep a buffer of 50 chars just in case, but usually cut exactly at marker
+        return text[:lowest_index].strip()
+    
+    return text
+
+
+
 @app.post("/generate-quiz")
 async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
     print(f"Generating quiz for topic: {req.topic}")
@@ -313,7 +360,8 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
     if not retrieved_chunks:
         return {"questions": []}
     
-    context_text = "\n".join(retrieved_chunks)
+    raw_context = "\n".join(retrieved_chunks)
+    clean_context = clean_context_text(raw_context)
 
     #  Call Groq with Pydantic Validation
     try: 
@@ -326,6 +374,9 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
                     "role": "system", 
                      "content": """
                     You are an expert assessment specialist. Create a 5-question multiple choice quiz based STRICTLY on the provided context.
+                    TASK:
+                    1. First, summarize the provided text in the 'context_summary' field.
+                    2. Then, create exactly 5 multiple choice questions based on that summary.
                     
                     CRITICAL RULES FOR OPTIONS:
                     1. **No Ambiguity:** Ensure there is only ONE indisputably correct answer based on the text.
@@ -333,11 +384,30 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
                     3. **Clear Distractors:** Incorrect options must be plausible but clearly wrong based on the text. Do not use vague options like "Other" or "Various factors".
                     4. **Self-Contained:** The question must be answerable purely from the provided text chunk.
                     5. **No Repetition:** Do not repeat questions or options.
+                    
+                    DO NOT FOCUS ON WORDS LIKE
+                    "Exercises", "Think as you read", "Understanding the text", 
+        "Vocabulary", "Glossary", "Acknowledgements", "About the Author"
+
+                    YOUR TASK IS TO PROVIDE QUIZ NOT ANSWERING THE QUESTION ASKED IN CONTEXT
                     """
                 },
                 {
                     "role": "user", 
-                    "content": f"Context: {context_text}\nTopic: {req.topic}"
+                    "content": f"""
+I have provided the text below. Please analyze it and generate the quiz.
+
+----- BEGIN SOURCE TEXT -----
+{clean_context}
+----- END SOURCE TEXT -----
+
+Topic: {req.topic}
+
+INSTRUCTION: 
+1. Do NOT continue the text above. 
+2. Do NOT list the vocabulary.
+3. Start the 'QuizResponse' tool call immediately.
+"""
                 }
             ],
             temperature=0.3,  
@@ -381,7 +451,7 @@ async def voice_coach(req: CoachRequest):
             
             recent_scores = results_response.data
             
-            print(f"📊 User's Quiz History: {recent_scores}") 
+            # print(f"📊 User's Quiz History: {recent_scores}") 
 
         except Exception as db_err:
             print(f"❌ DB Error: {db_err}")
@@ -395,6 +465,8 @@ async def voice_coach(req: CoachRequest):
                 stats_context += f"- Topic: {r.get('topic')}, Score: {r.get('score')}/{r.get('total_questions')}\n"
         else:
             stats_context = "The user has not taken any quizzes yet."
+
+        print("stats_context: ",stats_context)
  
         system_prompt = f"""
         You are a **Performance Coach and Mentor**. You are NOT a teacher or tutor. You help students to focus on their studies guides them like a coach but you can't teach any chapter or topic for that purpose AI Tutor is there.
@@ -428,7 +500,7 @@ async def voice_coach(req: CoachRequest):
         # Call LLM
         coach_response = client.chat.completions.create(
             messages=messages_to_send,
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             temperature=0.6,
             max_tokens=150,
             response_model=AssistantReply,
@@ -444,3 +516,66 @@ async def voice_coach(req: CoachRequest):
         print(f"Coach Error: {e}")
         # Return a generic error message so the frontend doesn't crash
         raise HTTPException(status_code=500, detail=f"Coach processing failed: {str(e)}")
+    
+
+class DeleteBookRequest(BaseModel):
+    filename: str
+
+@app.post("/delete-book")
+async def delete_book(
+    req: DeleteBookRequest, 
+    user_id: str = Header(..., alias="user-id")
+):
+    print(f" Deleting book: {req.filename} for user: {user_id}")
+
+    try:
+        # --- DELETE FROM PINECONE --- 
+        try:
+            index = pc.Index(INDEX_NAME)
+            index.delete(
+                filter={
+                    "user_id": user_id,
+                    "filename": req.filename
+                }
+            )
+            print("Pinecone vectors deleted.")
+        except Exception as pinecone_error:
+            # Log but don't stop. If Pinecone is down, we still want to delete the file.
+            print(f"Pinecone delete failed: {pinecone_error}")
+
+        # ---  DELETE FROM STORAGE (Supabase Bucket) ---
+        supabase.storage.from_("pdfs").remove([req.filename])
+        
+        #  Delete from documents
+        supabase.table("documents").delete().match({
+            "user_id": user_id,
+            "filename": req.filename
+        }).execute()
+
+        # Delete from quiz_results
+        supabase.table("quiz_results").delete().match({
+            "user_id": user_id,
+            "filename": req.filename
+        }).execute()
+
+        # C. Delete from 'chat_history' (Attempting both formats)
+        supabase.table("chat_history").delete().match({
+            "user_id": user_id,
+            "filename": req.filename
+        }).execute()
+        
+        # Handle "short" filename variation in chat_history if necessary
+        prefix = f"{user_id}_"
+        if req.filename.startswith(prefix):
+            short_filename = req.filename[len(prefix):]
+            supabase.table("chat_history").delete().match({
+                "user_id": user_id,
+                "filename": short_filename
+            }).execute()
+
+        return {"message": "Book, vectors, and data deleted successfully"}
+    
+
+    except Exception as e:
+        print(f"❌ Error deleting book: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

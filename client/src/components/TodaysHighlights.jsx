@@ -214,7 +214,7 @@ export default function TodaysHighlights({ results = [] }) {
             <h3 className="text-white font-medium text-xs">No quizzes today</h3>
             <button
               onClick={() => navigate("/quiz")}
-              className="mt-3 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded-full transition-all flex items-center gap-1.5"
+              className="cursor-pointer mt-3 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded-full transition-all flex items-center gap-1.5"
             >
               Start Quiz <ArrowRight className="w-3 h-3" />
             </button>

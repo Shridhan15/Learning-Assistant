@@ -72,13 +72,43 @@ const Home = () => {
 
   const allResults = Object.values(groupedResults).flat();
 
+  const handleDeleteBook = async (filename) => {
+    try {
+      const token = await getToken(); 
+
+      // FIX 2: Use API_BASE_URL and add Headers
+      const response = await fetch(`${API_BASE_URL}/delete-book`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, 
+          "user-id": userId,
+        },
+        body: JSON.stringify({ filename }), 
+      });
+
+      if (!response.ok) throw new Error("Delete failed");
+
+      
+      setGroupedResults((prev) => {
+        const newResults = { ...prev };  
+        delete newResults[filename];  
+        return newResults;  
+      });
+
+      console.log(`Successfully deleted ${filename}`);
+    } catch (error) {
+      console.error("Error deleting book:", error);
+      alert("Failed to delete book. Please try again.");
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
       {showHighlights && allResults.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-             
             <div>
               <h3 className="text-3xl font-bold text-white">Daily Recap</h3>
               <p className=" text-gray-400">
@@ -100,7 +130,10 @@ const Home = () => {
 
       <VoiceAssistant userId={user.id} />
 
-      <ResultsGrid groupedResults={groupedResults} />
+      <ResultsGrid
+        groupedResults={groupedResults}
+        onDelete={handleDeleteBook}
+      />
     </div>
   );
 };
