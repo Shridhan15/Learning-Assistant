@@ -447,7 +447,7 @@ const Tutor = () => {
                   {msg.role !== "user" &&
                   msg.isNew &&
                   idx === messages.length - 1 ? (
-                    <Typewriter text={msg.content} speed={15} />
+                    <Typewriter text={msg.content} speed={10} />
                   ) : (
                     <span className="whitespace-pre-wrap">{msg.content}</span>
                   )}

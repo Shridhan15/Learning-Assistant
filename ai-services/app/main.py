@@ -4,7 +4,7 @@ import instructor
 from fastapi import HTTPException
 
 import shutil
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header,WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel,Field
 from dotenv import load_dotenv
@@ -17,6 +17,8 @@ from pinecone import Pinecone, ServerlessSpec
 from supabase import create_client, Client 
 from supabase.client import ClientOptions
 
+import asyncio
+
 load_dotenv()
 
 
@@ -24,8 +26,12 @@ load_dotenv()
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 INDEX_NAME = "learning-assistant"
 pc = Pinecone(api_key=PINECONE_API_KEY)
-#  RAG functions 
+
+
+
+#  file imports
 from app.rag import load_pdf, chunk_text, store_in_pinecone, retrieve
+from app.services.websocket_manager import manager
 
 app = FastAPI()
 
@@ -214,6 +220,23 @@ def list_files(user_id: str = Header(None)):
         print(f"Error fetching files: {e}")
         return {"files": []}
     
+
+
+# --- WebSocket Endpoint ---
+@app.websocket("/ws/progress/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    await manager.connect(websocket, user_id)
+    try:
+        while True:
+            # Keep the connection open to listen for client disconnects
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        manager.disconnect(user_id)
+
+
  
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
@@ -238,9 +261,13 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
         if not existing.data: 
             documents = load_pdf(path)
             chunks = chunk_text(documents)
+
+
+            async def progress_reporter(current, total, status):
+                await manager.send_progress(user_id, current, total, status)
             
             # Pass the UNIQUE filename to Pinecone
-            store_in_pinecone(chunks, unique_filename, user_id)
+            await store_in_pinecone(chunks, unique_filename, user_id,progress_callback=progress_reporter)
             
             # Save the UNIQUE filename to Supabase
             supabase.table("documents").insert({

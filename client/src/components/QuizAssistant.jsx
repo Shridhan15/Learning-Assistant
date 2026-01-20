@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Upload,
   FileText,
@@ -34,13 +34,16 @@ const QuizAssistant = ({ getToken, userId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isAutoStarting, setIsAutoStarting] = useState(
-    !!(location.state?.filename && location.state?.topic)
+    !!(location.state?.filename && location.state?.topic),
   );
 
   const [quizData, setQuizData] = useState([]);
   const [userAnswers, setUserAnswers] = useState({});
   const [score, setScore] = useState(0);
   const [takingQuiz, setTakingQuiz] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [statusMsg, setStatusMsg] = useState("Initializing...");
+  const socketRef = useRef(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -70,24 +73,50 @@ const QuizAssistant = ({ getToken, userId }) => {
     }
   };
 
+  useEffect(() => {
+    if (!userId) return;
+
+    // Convert HTTP URL to WS URL (e.g., http://localhost:8000 -> ws://localhost:8000)
+    
+    const wsBaseUrl = API_BASE_URL.replace("http", "ws");
+    const wsUrl = `${wsBaseUrl}/ws/progress/${userId}`;
+
+    socketRef.current = new WebSocket(wsUrl);
+
+    socketRef.current.onopen = () => console.log(" WS Connected");
+
+    socketRef.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      // data = { percentage: 50, status: "Embedding", current: 5, total: 10 }
+      setProgress(data.percentage);
+      setStatusMsg(`${data.status} (${data.current}/${data.total})`);
+    };
+
+    return () => {
+      if (socketRef.current) socketRef.current.close();
+    };
+  }, [userId]);
+
   const handleFileUpload = async (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
 
+    // Reset Progress State
     setIsUploading(true);
+    setProgress(0);
+    setStatusMsg("Starting upload...");
 
     const formData = new FormData();
     formData.append("file", selectedFile);
 
     try {
-      // Get token manually here because FormData handling is special
       const token = await getToken();
 
       const response = await fetch(`${API_BASE_URL}/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "user-id": userId,
+          "user-id": userId, // This triggers the backend to send WS messages to this ID
         },
         body: formData,
       });
@@ -96,21 +125,27 @@ const QuizAssistant = ({ getToken, userId }) => {
 
       const data = await response.json();
 
-      setFile({ name: data.filename });
-      fetchFiles();
-      setIsUploading(false);
-      setStep(2);
+      // Success
+      setProgress(100);
+      setStatusMsg("Complete!");
+
+      // Short delay so user sees 100% before switching steps
+      setTimeout(() => {
+        setFile({ name: data.filename });
+        fetchFiles();
+        setIsUploading(false);
+        setStep(2);
+      }, 500);
     } catch (error) {
       console.error(error);
-      alert("Failed to upload PDF. Check backend console.");
+      alert("Failed to upload PDF.");
       setIsUploading(false);
     }
   };
 
-   
-  const handleSelectFromLibrary = (filename) => { 
+  const handleSelectFromLibrary = (filename) => {
     if (file?.name !== filename) {
-      setTopic(""); 
+      setTopic("");
     }
 
     setFile({ name: filename });
@@ -133,7 +168,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         token,
         userId,
         activeFile.name,
-        activeTopic
+        activeTopic,
       );
 
       if (data.questions && data.questions.length > 0) {
@@ -159,7 +194,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         // Update local state for context
         setFile({ name: filename });
         setTopic(topic);
-        setIsLoading(true);  
+        setIsLoading(true);
 
         try {
           // Call  generation logic directly here to ensure control flow
@@ -168,19 +203,19 @@ const QuizAssistant = ({ getToken, userId }) => {
 
           if (data.questions && data.questions.length > 0) {
             setQuizData(data.questions);
-            setStep(3); 
+            setStep(3);
             setTakingQuiz(true);
           } else {
             alert("The AI couldn't find relevant info for this topic.");
-            setStep(2);  
+            setStep(2);
             setTakingQuiz(false);
           }
         } catch (e) {
           console.error(e);
-          setStep(2); 
-        } finally { 
+          setStep(2);
+        } finally {
           setIsAutoStarting(false);
-          setIsLoading(false); 
+          setIsLoading(false);
           window.history.replaceState({}, document.title);
         }
       }
@@ -363,33 +398,45 @@ const QuizAssistant = ({ getToken, userId }) => {
             {step === 1 && (
               <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="group relative w-full h-64 md:h-80 rounded-3xl border-2 border-dashed border-white/10 hover:border-indigo-500/50 bg-slate-900/50 hover:bg-indigo-500/5 transition-all duration-300 cursor-pointer flex flex-col items-center justify-center overflow-hidden">
+                  {/* Input Field - Disabled while uploading */}
                   <input
                     type="file"
                     accept=".pdf"
                     onChange={handleFileUpload}
                     disabled={isUploading}
-                    className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                    className="absolute inset-0 opacity-0 cursor-pointer z-20 disabled:cursor-not-allowed"
                   />
 
-                  {/* Animated Rings */}
+                  {/* Background Animations */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
                     <div className="w-48 h-48 rounded-full border border-indigo-500/20 animate-ping absolute" />
                     <div className="w-64 h-64 rounded-full border border-indigo-500/10 animate-ping animation-delay-200 absolute" />
                   </div>
 
-                  <div className="relative z-10 flex flex-col items-center transform group-hover:-translate-y-2 transition-transform duration-300">
+                  <div className="relative z-10 flex flex-col items-center w-full max-w-xs px-4 transform group-hover:-translate-y-2 transition-transform duration-300">
                     {isUploading ? (
-                      <div className="flex flex-col items-center">
+                      // --- LOADING STATE WITH PROGRESS BAR ---
+                      <div className="flex flex-col items-center w-full">
                         <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mb-4" />
-                        <span className="text-indigo-300 font-medium">
-                          Processing File...
+
+                        <span className="text-indigo-300 font-medium mb-1">
+                          {statusMsg}
                         </span>
-                        <p className="text-slate-400 text-sm mt-2 max-w-xs leading-relaxed">
-                          This is a one-time process for new files. It might
-                          take a few moments.
+
+                        <p className="text-slate-500 text-xs mb-4">
+                          {progress}% completed
                         </p>
+
+                        {/* Progress Bar Container */}
+                        <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-indigo-500 transition-all duration-300 ease-out"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
                       </div>
                     ) : (
+                      // --- IDLE STATE (Upload Prompt) ---
                       <>
                         <div className="p-5 bg-slate-800 rounded-full mb-6 shadow-2xl group-hover:shadow-[0_0_25px_rgba(99,102,241,0.4)] transition-shadow">
                           <Upload className="w-8 h-8 text-indigo-400" />
@@ -397,9 +444,8 @@ const QuizAssistant = ({ getToken, userId }) => {
                         <p className="text-xl font-semibold text-white mb-2">
                           Upload PDF Document
                         </p>
-                        <p className="text-slate-500 text-sm max-w-xs text-center">
-                          Drag and drop your file here, or click to browse your
-                          computer
+                        <p className="text-slate-500 text-sm text-center">
+                          Drag and drop your file here, or click to browse
                         </p>
                       </>
                     )}
@@ -473,7 +519,6 @@ const QuizAssistant = ({ getToken, userId }) => {
             {(step === 3 || step === 4) && (
               <div className="w-full h-full flex flex-col animate-in fade-in duration-500">
                 {step === 3 && (
-                  
                   <QuizViewer
                     quizData={quizData}
                     userAnswers={userAnswers}
@@ -483,7 +528,6 @@ const QuizAssistant = ({ getToken, userId }) => {
                   />
                 )}
                 {step === 4 && (
-                  
                   <QuizResults
                     quizData={quizData}
                     userAnswers={userAnswers}

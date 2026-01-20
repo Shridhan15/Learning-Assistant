@@ -31,26 +31,28 @@ def chunk_text(documents):
     chunks = text_splitter.split_documents(documents)
     return chunks
 
-def store_in_pinecone(chunks, filename, user_id):
+ 
+async def store_in_pinecone(chunks, filename, user_id, progress_callback=None):
     """
-    Embeds chunks and uploads them to Pinecone with metadata AND user_id.
+    Embeds chunks and uploads to Pinecone with real-time progress updates.
     """
     index = pc.Index(INDEX_NAME)
-    
     vectors = []
+    total_chunks = len(chunks)
     
-    print(f"Embedding {len(chunks)} chunks for {filename} (User: {user_id})...")
-    
+    print(f"Embedding {total_chunks} chunks for {filename}...")
+
+    # ---   Embedding Loop ---
     for i, chunk in enumerate(chunks): 
         vector_values = embeddings.embed_query(chunk.page_content)
-         
+            
         metadata = {
             "text": chunk.page_content,
             "filename": filename,
             "chunk_id": i,
             "user_id": user_id   
         }
-         
+            
         vector_id = f"{user_id}_{filename}_{i}"
         
         vectors.append({
@@ -58,14 +60,27 @@ def store_in_pinecone(chunks, filename, user_id):
             "values": vector_values, 
             "metadata": metadata
         })
- 
+
+        # Update progress for every chunk
+        if progress_callback:
+            await progress_callback(i + 1, total_chunks, "Embedding")
+
+    # ---   Uploading Loop ---
     batch_size = 100
-    for i in range(0, len(vectors), batch_size):
+    total_vectors = len(vectors)
+    
+    for i in range(0, total_vectors, batch_size):
         batch = vectors[i:i+batch_size]
         index.upsert(vectors=batch)
         print(f"Uploaded batch {i} to {i+batch_size}")
+        
+        # Send "Finalizing" update
+        if progress_callback:
+            await progress_callback(total_chunks, total_chunks, "Saving to Database...")
     
     print("Upload complete.")
+
+
 
 def retrieve(question, filename, user_id, k=5):
     """
