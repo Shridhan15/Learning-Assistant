@@ -3,6 +3,7 @@ import json
 import instructor
 from fastapi import HTTPException
 
+
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header,WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,6 +33,7 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 #  file imports
 from app.rag import load_pdf, chunk_text, store_in_pinecone, retrieve
 from app.services.websocket_manager import manager
+from app.services.vision_service import analyze_chat_image
 
 app = FastAPI()
 
@@ -96,24 +98,48 @@ def get_chat_history(filename: str, user_id: str = Header(None)):
 class ChatRequest(BaseModel):
     message: str
     filename: str
+    image: Optional[str] = None
 
 @app.post("/chat")
 def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID required")
+    
+    # Start with the plain text message
+    effective_message = request.message
 
-    # save user message to DB
+    # --- STEP 1: VISION PROCESSING ---
+    if request.image:
+        print("Processing chat image with Azure...")
+        try:
+            # Get description from Azure Vision
+            image_description = analyze_chat_image(request.image)
+            
+            # Combine User Text + Image Context
+            effective_message = (
+                f"{request.message}\n\n"
+                f"[CONTEXT FROM UPLOADED IMAGE: {image_description}]"
+            )
+            print(f"DEBUG: Image Description: {image_description[:50]}...")
+        except Exception as e:
+            print(f"Error processing image: {e}")
+            # If vision fails, we just proceed with text only to avoid crashing
+            pass
+
+    # --- STEP 2: SAVE USER MESSAGE TO DB ---
+    # CRITICAL FIX: Save 'effective_message' (with image desc), not just 'request.message'.
+    # This ensures the history remembers what the image was about.
     try:
         supabase.table("chat_history").insert({
             "user_id": user_id,
             "filename": request.filename,
             "role": "user",
-            "content": request.message
+            "content": effective_message 
         }).execute()
     except Exception as e:
         print(f"Error saving user message: {e}")
 
-    # fetch history(last 10 messages)
+    # --- STEP 3: FETCH HISTORY ---
     try:
         history_response = supabase.table("chat_history")\
             .select("role, content")\
@@ -123,19 +149,21 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             .limit(10)\
             .execute()
          
+        # Reverse to get chronological order (Oldest -> Newest)
         db_history = history_response.data[::-1] 
     except Exception as e:
         print(f"Error fetching history context: {e}")
         db_history = []
      
+    # Convert to LangChain format
     chat_history = []
     for msg in db_history:
         if msg['role'] == 'user':
             chat_history.append(HumanMessage(content=msg['content']))
         else:
             chat_history.append(AIMessage(content=msg['content']))
- 
-    # If history, check if the new message is a follow-up or a new topic.
+
+    # --- STEP 4: REPHRASE / SEARCH QUERY ---
     if len(chat_history) > 1:  
         rephrase_prompt = ChatPromptTemplate.from_messages([
             MessagesPlaceholder(variable_name="chat_history"),
@@ -151,20 +179,20 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
         
         rephrase_chain = rephrase_prompt | chat_model
         
-        # We pass the history excluding the very last message (which is the current one) 
-        # normally, but since we fetched from DB, 'chat_history' contains the current message 
-        # because we inserted it in Step 1.
-        # To avoid confusion, we can just pass the whole history.
+        # We pass 'effective_message' as input. 
+        # Note: Since we already saved effective_message to DB in Step 2, 
+        # it is technically already inside 'chat_history'.
+        # However, passing it explicitly as 'input' is safer for the prompt structure.
         search_query = rephrase_chain.invoke({
-            "chat_history": chat_history, 
-            "input": request.message
+            "chat_history": chat_history[:-1], # Exclude the just-inserted message to avoid duplication in prompt
+            "input": effective_message
         }).content
     else:
-        search_query = request.message
+        search_query = effective_message
 
     print(f"DEBUG: Original='{request.message}' -> Search='{search_query}'")
 
-    # RETRIEVE & ANSWER 
+    # --- STEP 5: RETRIEVE & ANSWER ---
     context_chunks = retrieve(search_query, request.filename, user_id)
     context_text = "\n\n".join(context_chunks)
 
@@ -178,11 +206,11 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     
     response = chain.invoke({
         "context": context_text,
-        "chat_history": chat_history,
-        "input": request.message
+        "chat_history": chat_history[:-1], # Again, exclude last msg to avoid duplication
+        "input": effective_message
     })
 
-    # SAVE AI RESPONSE TO DB
+    # --- STEP 6: SAVE AI RESPONSE TO DB ---
     try:
         supabase.table("chat_history").insert({
             "user_id": user_id,
@@ -194,7 +222,6 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
         print(f"Error saving AI message: {e}")
 
     return {"response": response.content}
-
 
 class QuizRequest(BaseModel):
     topic: str

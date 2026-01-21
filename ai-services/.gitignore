@@ -1,2 +1,4 @@
 .env
 .venv/
+test.py
+image.png

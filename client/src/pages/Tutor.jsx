@@ -16,6 +16,8 @@ import {
   Heart,
   Code,
   X,
+  Image as ImageIcon,
+  Paperclip,
 } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 import { getDisplayName } from "../utils/fileHelpers";
@@ -38,14 +40,40 @@ const Tutor = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [filesLoading, setFilesLoading] = useState(true);
 
-  // Auto-scroll  
+  // Auto-scroll
   const chatContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
+
+  const [selectedImage, setSelectedImage] = useState(null); // Stores base64 string
+  const [imagePreview, setImagePreview] = useState(null); // Stores URL for preview
+  const imageInputRef = useRef(null);
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Create local preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+
+    // Convert to Base64 for Backend
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedImage(reader.result); // This is the string we send to backend
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
 
   const scrollToBottom = () => {
     const el = chatContainerRef.current;
     if (!el) return;
- 
+
     el.scrollTo({
       top: el.scrollHeight,
       behavior: "smooth",
@@ -105,14 +133,26 @@ const Tutor = () => {
   // Handle Send
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim() || !selectedFile) return;
+
+    // Allow sending if there is text OR an image
+    if ((!input.trim() && !selectedImage) || !selectedFile) return;
 
     const userMessage = input;
-    setInput("");
+    const imageToSend = selectedImage;
 
+    // Clear inputs immediately for better UX
+    setInput("");
+    clearImage();
+
+    // Add to UI immediately (Optimistic Update)
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: userMessage, isNew: true },
+      {
+        role: "user",
+        content: userMessage,
+        image: imagePreview, //  preview URL to show in chat history
+        isNew: true,
+      },
     ]);
     setLoading(true);
 
@@ -128,9 +168,12 @@ const Tutor = () => {
         body: JSON.stringify({
           message: userMessage,
           filename: selectedFile,
+          image: imageToSend, //  Sending Base64 here
         }),
       });
+
       const data = await response.json();
+
       setMessages((prev) => [
         ...prev,
         {
@@ -140,6 +183,7 @@ const Tutor = () => {
         },
       ]);
     } catch (error) {
+      console.error(error);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: "Error connecting to AI Tutor." },
@@ -147,6 +191,14 @@ const Tutor = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const cleanMessage = (content) => {
+    if (!content) return "";
+    // Removes everything inside [CONTEXT ... ] tags
+    return content
+      .replace(/\[CONTEXT FROM UPLOADED IMAGE:[\s\S]*?\]/g, "")
+      .trim();
   };
 
   return (
@@ -235,7 +287,7 @@ const Tutor = () => {
         </div>
       </div>
 
-      {/* --- MOBILE SIDEBAR --- */} 
+      {/* --- MOBILE SIDEBAR --- */}
       {isMobileSidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
@@ -289,7 +341,7 @@ const Tutor = () => {
                   if (selectedFile !== file) {
                     setSelectedFile(file);
                     loadChatHistory(file);
-                  } 
+                  }
                   setIsMobileSidebarOpen(false);
                 }}
                 className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
@@ -424,6 +476,7 @@ const Tutor = () => {
                   msg.role === "user" ? "flex-row-reverse" : ""
                 }`}
               >
+                {/* Avatar */}
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg ${
                     msg.role === "user"
@@ -437,6 +490,8 @@ const Tutor = () => {
                     <Sparkles className="w-4 h-4 text-white" />
                   )}
                 </div>
+
+                {/* Message Bubble */}
                 <div
                   className={`max-w-[85%] sm:max-w-[75%] px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-md ${
                     msg.role === "user"
@@ -444,12 +499,24 @@ const Tutor = () => {
                       : "bg-gray-800/80 text-gray-200 rounded-tl-none border border-white/5"
                   }`}
                 >
+                  {/* --- NEW: RENDER IMAGE IF EXISTS --- */}
+                  {msg.image && (
+                    <div className="mb-3 mt-1">
+                      <img
+                        src={msg.image}
+                        alt="User upload"
+                        className="rounded-lg max-h-60 w-auto object-contain border border-white/20 shadow-sm"
+                      />
+                    </div>
+                  )}
+
+                  {/* Existing Text Rendering */}
                   {msg.role !== "user" &&
                   msg.isNew &&
                   idx === messages.length - 1 ? (
                     <Typewriter text={msg.content} speed={10} />
                   ) : (
-                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                    <span className="whitespace-pre-wrap">{cleanMessage(msg.content)}</span>
                   )}
                 </div>
               </div>
@@ -470,31 +537,80 @@ const Tutor = () => {
         </div>
 
         {/* Input Area */}
-        <div className="p-3 sm:p-4 bg-gray-950 border-t border-white/5 shrink-0 z-20">
-          <form
-            onSubmit={handleSend}
-            className="max-w-2xl mx-auto flex items-center gap-2"
-          >
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={!selectedFile || loading}
-              placeholder={
-                selectedFile
-                  ? "Ask anything about selected file"
-                  : "Select a file to start chatting"
-              }
-              className="flex-1 bg-gray-900/70 text-white rounded-lg border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 placeholder:text-gray-500 shadow-inner"
-            />
-            <button
-              type="submit"
-              disabled={!selectedFile || loading || !input.trim()}
-              className="cursor-pointer p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+        <div className="p-3 sm:p-4  bg-gray-950 border-t border-white/5 shrink-0 z-20">
+          {/* IMAGE PREVIEW AREA (Only shows if image is selected) */}
+          {imagePreview && (
+            <div className="px-4 pt-3 flex items-center gap-2">
+              <div className="relative group">
+                <img
+                  src={imagePreview}
+                  alt="Selected"
+                  className="h-16 w-16 object-cover rounded-lg border border-indigo-500/30"
+                />
+                <button
+                  onClick={clearImage}
+                  className="absolute -top-2 -right-2 bg-gray-800 text-gray-400 hover:text-red-400 rounded-full p-0.5 border border-gray-600 shadow-lg transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <span className="text-xs text-indigo-300 animate-pulse">
+                Image attached
+              </span>
+            </div>
+          )}
+
+          <div className="p-3 sm:p-4">
+            <form
+              onSubmit={handleSend}
+              className="max-w-2xl mx-auto flex items-center gap-3"
             >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
+              {/* Hidden File Input for Images */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={imageInputRef}
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+
+              {/* Attachment Button */}
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={!selectedFile || loading}
+                className="cursor-pointer p-2.5 text-gray-400 hover:text-indigo-400 hover:bg-gray-900 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Attach Image"
+              >
+                <Paperclip className="  w-5 h-5" />
+              </button>
+
+              {/* Text Input */}
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={!selectedFile || loading}
+                placeholder={
+                  selectedFile
+                    ? "Ask a question..."
+                    : "Select a file to start chatting"
+                }
+                className="flex-1 bg-gray-900/70 text-white rounded-lg border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 placeholder:text-gray-500 shadow-inner"
+              />
+
+              {/* Send Button */}
+              <button
+                type="submit"
+                disabled={
+                  (!input.trim() && !selectedImage) || !selectedFile || loading
+                }
+                className="cursor-pointer p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 flex items-center justify-center"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
