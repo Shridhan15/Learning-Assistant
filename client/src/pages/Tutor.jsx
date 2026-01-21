@@ -18,6 +18,7 @@ import {
   X,
   Image as ImageIcon,
   Paperclip,
+  Brain,
 } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 import { getDisplayName } from "../utils/fileHelpers";
@@ -34,6 +35,7 @@ const Tutor = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSocratic, setIsSocratic] = useState(false);
 
   // --- STATE SPLIT ---
   const [loading, setLoading] = useState(false);
@@ -169,6 +171,7 @@ const Tutor = () => {
           message: userMessage,
           filename: selectedFile,
           image: imageToSend, //  Sending Base64 here
+          is_socratic: isSocratic,
         }),
       });
 
@@ -516,7 +519,9 @@ const Tutor = () => {
                   idx === messages.length - 1 ? (
                     <Typewriter text={msg.content} speed={10} />
                   ) : (
-                    <span className="whitespace-pre-wrap">{cleanMessage(msg.content)}</span>
+                    <span className="whitespace-pre-wrap">
+                      {cleanMessage(msg.content)}
+                    </span>
                   )}
                 </div>
               </div>
@@ -537,8 +542,9 @@ const Tutor = () => {
         </div>
 
         {/* Input Area */}
-        <div className="p-3 sm:p-4  bg-gray-950 border-t border-white/5 shrink-0 z-20">
-          {/* IMAGE PREVIEW AREA (Only shows if image is selected) */}
+        {/* Input Area */}
+        <div className="bg-gray-950 border-t border-white/5 shrink-0 z-20">
+          {/* IMAGE PREVIEW (Same as before) */}
           {imagePreview && (
             <div className="px-4 pt-3 flex items-center gap-2">
               <div className="relative group">
@@ -563,9 +569,9 @@ const Tutor = () => {
           <div className="p-3 sm:p-4">
             <form
               onSubmit={handleSend}
-              className="max-w-2xl mx-auto flex items-center gap-3"
+              className="max-w-3xl mx-auto flex items-center gap-2 sm:gap-3"
             >
-              {/* Hidden File Input for Images */}
+              {/* Hidden File Input */}
               <input
                 type="file"
                 accept="image/*"
@@ -574,16 +580,38 @@ const Tutor = () => {
                 className="hidden"
               />
 
-              {/* Attachment Button */}
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={!selectedFile || loading}
-                className="cursor-pointer p-2.5 text-gray-400 hover:text-indigo-400 hover:bg-gray-900 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Attach Image"
-              >
-                <Paperclip className="  w-5 h-5" />
-              </button>
+              {/* --- LEFT SIDE ACTIONS --- */}
+              <div className="flex items-center gap-1">
+                {/* 1. Attachment Button */}
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={!selectedFile || loading}
+                  className="cursor-pointer p-2.5 text-gray-400 hover:text-indigo-400 hover:bg-gray-900 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Attach Image"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
+
+                {/* 2. Socratic Mode Toggle (NEW) */}
+                <button
+                  type="button"
+                  onClick={() => setIsSocratic(!isSocratic)}
+                  disabled={!selectedFile || loading}
+                  className={`cursor-pointer p-2.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isSocratic
+                      ? "bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/50"
+                      : "text-gray-400 hover:text-indigo-400 hover:bg-gray-900"
+                  }`}
+                  title={
+                    isSocratic ? "Socratic Mode: ON" : "Socratic Mode: OFF"
+                  }
+                >
+                  <Brain
+                    className={`w-5 h-5 ${isSocratic ? "fill-indigo-500/20" : ""}`}
+                  />
+                </button>
+              </div>
 
               {/* Text Input */}
               <input
@@ -593,10 +621,12 @@ const Tutor = () => {
                 disabled={!selectedFile || loading}
                 placeholder={
                   selectedFile
-                    ? "Ask a question..."
+                    ? isSocratic
+                      ? "Ask a question (Socratic Mode ON)..."
+                      : "Ask a question..."
                     : "Select a file to start chatting"
                 }
-                className="flex-1 bg-gray-900/70 text-white rounded-lg border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 placeholder:text-gray-500 shadow-inner"
+                className="flex-1 bg-gray-900/70 text-white rounded-lg border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 placeholder:text-gray-500 shadow-inner min-w-0"
               />
 
               {/* Send Button */}
@@ -605,11 +635,22 @@ const Tutor = () => {
                 disabled={
                   (!input.trim() && !selectedImage) || !selectedFile || loading
                 }
-                className="cursor-pointer p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 flex items-center justify-center"
+                className="cursor-pointer p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 flex items-center justify-center shrink-0"
               >
                 <Send className="w-4 h-4" />
               </button>
             </form>
+
+            {/* Optional: Tiny helper text below input to explain the mode */}
+            {isSocratic && (
+              <div className="max-w-2xl mx-auto mt-2 px-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                <p className="text-[10px] text-indigo-300/70 uppercase tracking-wider font-medium">
+                  Socratic Mode Active: The AI will guide you instead of giving
+                  answers.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

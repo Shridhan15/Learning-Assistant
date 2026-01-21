@@ -99,6 +99,7 @@ class ChatRequest(BaseModel):
     message: str
     filename: str
     image: Optional[str] = None
+    is_socratic: bool = False
 
 @app.post("/chat")
 def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
@@ -196,8 +197,24 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     context_chunks = retrieve(search_query, request.filename, user_id)
     context_text = "\n\n".join(context_chunks)
 
+    if request.is_socratic:
+        system_instruction = (
+            "You are a Socratic Tutor. The user is a student asking a question. "
+            "Your goal is to guide them to the answer, but DO NOT give them the answer directly. "
+            "Use the provided context to formulate a guiding question that helps them think. "
+            "If they are  stuck, give a small hint, but still ask a follow-up question. "
+            "Keep your tone encouraging and curious. If the user is genuinly asking to give the answer after 1-2 attempts, the provide the correct answer "
+        )
+    else:
+        system_instruction = (
+            "You are a helpful AI Tutor. Answer the user's question based ONLY on the following context. "
+            "Use easy way of explaning, do not load with heavy book like text only, you are a teacher, "
+            "teach in that way, do no provide excess text, do not make long explanation, keep simple. "
+            "If the answer is not in the context, say you don't know."
+        )
+
     answer_prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful AI Tutor. Answer the user's question based ONLY on the following context. Use easy way of explaning, do not load with heavy book like text only, you are a teacher, teach in that way, do no provide excess text, do not make long explanation,keep simple. If the answer is not in the context, say you don't know.\n\nContext:\n{context}"),
+        ("system", system_instruction + "\n\nContext:\n{context}"),
         MessagesPlaceholder(variable_name="chat_history"),
         ("user", "{input}")
     ])

@@ -13,7 +13,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
- 
+
 function MonthlyHeatmap({ data = [] }) {
   const calendarData = useMemo(() => {
     const today = new Date();
@@ -23,7 +23,8 @@ function MonthlyHeatmap({ data = [] }) {
     for (let i = 27; i >= 0; i--) {
       const d = new Date();
       d.setDate(today.getDate() - i);
-      const dateKey = d.toISOString().split("T")[0];
+
+      const dateKey = d.toLocaleDateString("en-CA"); // ✅ local
       const readableDate = d.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
@@ -35,7 +36,8 @@ function MonthlyHeatmap({ data = [] }) {
 
     data.forEach((item) => {
       if (!item.created_at) return;
-      const itemDate = new Date(item.created_at).toISOString().split("T")[0];
+      const itemDate = new Date(item.created_at).toLocaleDateString("en-CA"); // ✅ local
+
       if (daysMap[itemDate]) {
         daysMap[itemDate].count += 1;
       }
@@ -127,14 +129,14 @@ function StatChip({
     </div>
   );
 }
- 
+
 const pct = (score, total) =>
   total > 0 ? Math.round((Number(score) / Number(total)) * 100) : 0;
 
 export function isBetween10pmAnd12amLocal() {
   const now = new Date();
   const h = now.getHours();
-  return h >= 20 && h < 24;
+  return h >= 20 && h<24;
 }
 
 export default function TodaysHighlights({ results = [] }) {
@@ -220,7 +222,7 @@ export default function TodaysHighlights({ results = [] }) {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-4"> 
+          <div className="flex flex-col gap-4">
             {/* Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               <StatChip
@@ -265,14 +267,14 @@ export default function TodaysHighlights({ results = [] }) {
                 <MonthlyHeatmap data={results} />
               </div>
 
-              {/* Right: Chart */} 
+              {/* Right: Chart */}
               <div className="flex-1 min-w-0 rounded-xl border border-white/5 bg-black/20 p-3 relative">
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-2 text-[11px] font-medium text-gray-400 px-1">
                   <TrendingUp className="w-3 h-3 text-emerald-400" />
                   Score Trajectory
                 </div>
- 
+
                 <div className="w-full h-37.5">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
@@ -337,7 +339,7 @@ export default function TodaysHighlights({ results = [] }) {
                 </div>
               </div>
             </div>
- 
+
             <div className="w-full py-2 rounded-lg bg-white/2 border border-white/5 text-center mt-1 hidden md:block">
               <p className="text-[11px] font-medium text-gray-500 flex items-center justify-center gap-1.5">
                 <BookOpen className="w-3 h-3 text-indigo-400/70" />
