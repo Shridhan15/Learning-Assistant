@@ -19,6 +19,7 @@ import {
   Image as ImageIcon,
   Paperclip,
   Brain,
+  Award,
 } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 import { getDisplayName } from "../utils/fileHelpers";
@@ -36,6 +37,7 @@ const Tutor = () => {
   const [input, setInput] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSocratic, setIsSocratic] = useState(false);
+  const [isFeynman, setIsFeynman] = useState(false);
 
   // --- STATE SPLIT ---
   const [loading, setLoading] = useState(false);
@@ -132,6 +134,16 @@ const Tutor = () => {
     }
   };
 
+  const toggleMode = (mode) => {
+    if (mode === "socratic") {
+      setIsSocratic(!isSocratic);
+      setIsFeynman(false); // Turn off Feynman
+    } else {
+      setIsFeynman(!isFeynman);
+      setIsSocratic(false); // Turn off Socratic
+    }
+  };
+
   // Handle Send
   const handleSend = async (e) => {
     e.preventDefault();
@@ -172,6 +184,7 @@ const Tutor = () => {
           filename: selectedFile,
           image: imageToSend, //  Sending Base64 here
           is_socratic: isSocratic,
+          is_feynman: isFeynman,
         }),
       });
 
@@ -593,10 +606,10 @@ const Tutor = () => {
                   <Paperclip className="w-5 h-5" />
                 </button>
 
-                {/* 2. Socratic Mode Toggle (NEW) */}
+                {/* Socratic Mode Toggle */}
                 <button
                   type="button"
-                  onClick={() => setIsSocratic(!isSocratic)}
+                  onClick={() => toggleMode("socratic")}
                   disabled={!selectedFile || loading}
                   className={`cursor-pointer p-2.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                     isSocratic
@@ -611,6 +624,23 @@ const Tutor = () => {
                     className={`w-5 h-5 ${isSocratic ? "fill-indigo-500/20" : ""}`}
                   />
                 </button>
+
+                {/* Feynman Toggle */}
+                <button
+                  type="button"
+                  onClick={() => toggleMode("feynman")}
+                  disabled={!selectedFile || loading}
+                  className={`cursor-pointer p-2.5 rounded-lg transition-all disabled:opacity-50 ${
+                    isFeynman
+                      ? "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/50"
+                      : "text-gray-400 hover:text-amber-400 hover:bg-gray-900"
+                  }`}
+                  title="Feynman Mode (You explain, AI grades you)"
+                >
+                  <Award
+                    className={`w-5 h-5 ${isFeynman ? "fill-amber-500/20" : ""}`}
+                  />
+                </button>
               </div>
 
               {/* Text Input */}
@@ -622,8 +652,10 @@ const Tutor = () => {
                 placeholder={
                   selectedFile
                     ? isSocratic
-                      ? "Ask a question (Socratic Mode ON)..."
-                      : "Ask a question..."
+                      ? "Ask a question..."
+                      : isFeynman
+                        ? "Explain a concept to check your understanding..."
+                        : "Ask a question..."
                     : "Select a file to start chatting"
                 }
                 className="flex-1 bg-gray-900/70 text-white rounded-lg border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 placeholder:text-gray-500 shadow-inner min-w-0"
@@ -641,13 +673,22 @@ const Tutor = () => {
               </button>
             </form>
 
-            {/* Optional: Tiny helper text below input to explain the mode */}
             {isSocratic && (
               <div className="max-w-2xl mx-auto mt-2 px-2 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
                 <p className="text-[10px] text-indigo-300/70 uppercase tracking-wider font-medium">
                   Socratic Mode Active: The AI will guide you instead of giving
                   answers.
+                </p>
+              </div>
+            )}
+
+            {isFeynman && (
+              <div className="max-w-2xl mx-auto mt-2 px-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <p className="text-[10px] text-amber-300/70 uppercase tracking-wider font-medium">
+                  Feynman Mode Active: You explain the concept, and the AI
+                  grades your understanding.
                 </p>
               </div>
             )}

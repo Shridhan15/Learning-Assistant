@@ -100,16 +100,19 @@ class ChatRequest(BaseModel):
     filename: str
     image: Optional[str] = None
     is_socratic: bool = False
+    is_feynman: bool = False
 
 @app.post("/chat")
 def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID required")
     
+    print(f"DEBUG MODE CHECK: Socratic={request.is_socratic}, Feynman={request.is_feynman}")
+    
     # Start with the plain text message
     effective_message = request.message
 
-    # --- STEP 1: VISION PROCESSING ---
+    # --- VISION PROCESSING ---
     if request.image:
         print("Processing chat image with Azure...")
         try:
@@ -127,9 +130,7 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             # If vision fails, we just proceed with text only to avoid crashing
             pass
 
-    # --- STEP 2: SAVE USER MESSAGE TO DB ---
-    # CRITICAL FIX: Save 'effective_message' (with image desc), not just 'request.message'.
-    # This ensures the history remembers what the image was about.
+    # --- SAVE USER MESSAGE TO DB ---  
     try:
         supabase.table("chat_history").insert({
             "user_id": user_id,
@@ -140,7 +141,7 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     except Exception as e:
         print(f"Error saving user message: {e}")
 
-    # --- STEP 3: FETCH HISTORY ---
+    # ---  FETCH HISTORY ---
     try:
         history_response = supabase.table("chat_history")\
             .select("role, content")\
@@ -149,8 +150,7 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             .order("created_at", desc=True)\
             .limit(10)\
             .execute()
-         
-        # Reverse to get chronological order (Oldest -> Newest)
+          
         db_history = history_response.data[::-1] 
     except Exception as e:
         print(f"Error fetching history context: {e}")
@@ -164,7 +164,7 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
         else:
             chat_history.append(AIMessage(content=msg['content']))
 
-    # --- STEP 4: REPHRASE / SEARCH QUERY ---
+    # --- REPHRASE / SEARCH QUERY ---
     if len(chat_history) > 1:  
         rephrase_prompt = ChatPromptTemplate.from_messages([
             MessagesPlaceholder(variable_name="chat_history"),
@@ -179,11 +179,7 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
         ])
         
         rephrase_chain = rephrase_prompt | chat_model
-        
-        # We pass 'effective_message' as input. 
-        # Note: Since we already saved effective_message to DB in Step 2, 
-        # it is technically already inside 'chat_history'.
-        # However, passing it explicitly as 'input' is safer for the prompt structure.
+         
         search_query = rephrase_chain.invoke({
             "chat_history": chat_history[:-1], # Exclude the just-inserted message to avoid duplication in prompt
             "input": effective_message
@@ -193,9 +189,24 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
 
     print(f"DEBUG: Original='{request.message}' -> Search='{search_query}'")
 
-    # --- STEP 5: RETRIEVE & ANSWER ---
+    # ---  RETRIEVE & ANSWER ---
     context_chunks = retrieve(search_query, request.filename, user_id)
     context_text = "\n\n".join(context_chunks)
+
+
+    if request.is_feynman:
+        # FEYNMAN MODE: The user is the teacher, AI is the critic.
+        system_instruction = (
+            "You are a Strict Academic Critic using the 'Feynman Technique'. "
+            "The user is attempting to explain a concept to you. "
+            "Your job is NOT to answer their question, but to GRADE their explanation based on the Context provided below. "
+            "1. Start with a Score (0-100). "
+            "2. List any factual errors (Misconceptions). "
+            "3. List key concepts they missed from the text. "
+            "4. End with a brief summary feedback. "
+            "Be constructive but rigorous."
+        )
+
 
     if request.is_socratic:
         system_instruction = (
