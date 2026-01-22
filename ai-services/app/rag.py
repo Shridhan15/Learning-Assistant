@@ -82,7 +82,7 @@ async def store_in_pinecone(chunks, filename, user_id, progress_callback=None):
 
 
 
-def retrieve(question, filename, user_id, k=5):
+def retrieve(question, filename, user_id, k=3):
     """
     Queries Pinecone for relevant chunks.
     STRICTLY filters by user_id and filename.

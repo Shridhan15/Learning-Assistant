@@ -5,6 +5,7 @@ from fastapi import HTTPException
 
 
 import shutil
+import string
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header,WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel,Field
@@ -102,6 +103,13 @@ class ChatRequest(BaseModel):
     is_socratic: bool = False
     is_feynman: bool = False
 
+
+SKIP_RAG_KEYWORDS = {
+    "hi", "hello", "hey", "hie", "heya",
+    "thanks", "thank you", "tks", "thx", "cool", "ok", "okay", "k", "got it",
+    "bye", "byee", "goodbye", "cya", "see ya","see you",'good morning', "good night", "gn"
+}
+
 @app.post("/chat")
 def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     if not user_id:
@@ -148,14 +156,22 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             .eq("user_id", user_id)\
             .eq("filename", request.filename)\
             .order("created_at", desc=True)\
-            .limit(10)\
+            .limit(5)\
             .execute()
           
         db_history = history_response.data[::-1] 
     except Exception as e:
         print(f"Error fetching history context: {e}")
         db_history = []
-     
+
+    
+
+    msg_clean = request.message.lower().strip().translate(str.maketrans('', '', string.punctuation))
+ 
+    is_keyword = msg_clean in SKIP_RAG_KEYWORDS 
+    is_short = len(msg_clean) < 3  
+    is_conversational = is_keyword or is_short
+ 
     # Convert to LangChain format
     chat_history = []
     for msg in db_history:
@@ -165,64 +181,87 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             chat_history.append(AIMessage(content=msg['content']))
 
     # --- REPHRASE / SEARCH QUERY ---
-    if len(chat_history) > 1:  
-        rephrase_prompt = ChatPromptTemplate.from_messages([
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("user", "{input}"),
-            (
-                "system",
-                "Given the above conversation, generate a search query to look up in order to get information relevant to the conversation. "
-                "IMPORTANT: If the user is asking a follow-up question, combine it with previous context. "
-                "If the user is asking a completely new question (changing the topic), ignore the history and generate a query for the new topic only. "
-                "Return ONLY the query string, nothing else."
-            )
-        ])
-        
-        rephrase_chain = rephrase_prompt | chat_model
-         
-        search_query = rephrase_chain.invoke({
-            "chat_history": chat_history[:-1], # Exclude the just-inserted message to avoid duplication in prompt
-            "input": effective_message
-        }).content
-    else:
-        search_query = effective_message
+    search_query = None
+    if not is_conversational:
+        if len(chat_history) > 1:  
+            rephrase_prompt = ChatPromptTemplate.from_messages([
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("user", "{input}"),
+                (
+                    "system",
+                    "Given the above conversation, generate a search query to look up in order to get information relevant to the conversation. "
+                    "IMPORTANT: If the user is asking a follow-up question, combine it with previous context. "
+                    "If the user is asking a completely new question (changing the topic), ignore the history and generate a query for the new topic only. "
+                    "Return ONLY the query string, nothing else."
+                )
+            ])
+
+            print("DEBUG: Rephrasing for search query...")
+            
+            rephrase_chain = rephrase_prompt | chat_model
+            
+            search_query = rephrase_chain.invoke({
+                "chat_history": chat_history[:-1], # Exclude the just-inserted message to avoid duplication in prompt
+                "input": effective_message
+            }).content
+        else:
+            search_query = effective_message
 
     print(f"DEBUG: Original='{request.message}' -> Search='{search_query}'")
 
     # ---  RETRIEVE & ANSWER ---
-    context_chunks = retrieve(search_query, request.filename, user_id)
-    context_text = "\n\n".join(context_chunks)
+    context_text = ""
+    
+    if search_query:
+        print(f"DEBUG: Searching PDF for: '{search_query}'")
+        
+        # Retrieve chunks
+        raw_chunks = retrieve(search_query, request.filename, user_id)
+        
+        #  Only take the top 3 most relevant chunks
+        top_chunks = raw_chunks[:3] 
+        
+        # 2. JOIN CHUNKS
+        context_text = "\n\n".join(top_chunks)
+         
+        if len(context_text) > 3000:
+            context_text = context_text[:3000] + "... [Content Truncated for brevity]"
+    else:
+        print("DEBUG: Skipping Search (Conversational Input)")
 
 
     if request.is_feynman:
-        # FEYNMAN MODE: The user is the teacher, AI is the critic.
+        # FEYNMAN MODE: The user teaches, AI grades.
         system_instruction = (
-            "You are a Strict Academic Critic using the 'Feynman Technique'. "
-            "The user is attempting to explain a concept to you. "
-            "Your job is NOT to answer their question, but to GRADE their explanation based on the Context provided below. "
-            "1. Start with a Score (0-100). "
-            "2. List any factual errors (Misconceptions). "
-            "3. List key concepts they missed from the text. "
-            "4. End with a brief summary feedback. "
-            "Be constructive but rigorous."
+             """
+Role: Academic Critic (Feynman Technique). Task: Test user's understanding. Rules:
+
+If input is greeting/topic: Do NOT grade. Ask user to explain concept simply.
+
+If explanation: Grade against Context. Report:   Misconceptions, Missing Details, Brief Feedback. Tone: Rigorous but fair."""
         )
 
-
-    if request.is_socratic:
+    elif request.is_socratic:
+        #  AI guides, doesn't tell (unless asked).
         system_instruction = (
-            "You are a Socratic Tutor. The user is a student asking a question. "
-            "Your goal is to guide them to the answer, but DO NOT give them the answer directly. "
-            "Use the provided context to formulate a guiding question that helps them think. "
-            "If they are  stuck, give a small hint, but still ask a follow-up question. "
-            "Keep your tone encouraging and curious. If the user is genuinly asking to give the answer after 1-2 attempts, the provide the correct answer "
+            "Role: Socratic Tutor. Goal: Guide user to the answer via questioning.\n"
+            "Rules:\n"
+            "1. Never answer directly. Ask guiding questions based on Context.\n"
+            "2. Break down complex concepts.\n"
+            "3. If wrong: Provide hint + simpler question.\n"
+            "4. EXIT STRATEGY: If user is frustrated, stuck, or asks for answer -> STOP Socratic mode. Provide full, simple explanation immediately."
         )
     else:
-        system_instruction = (
-            "You are a helpful AI Tutor. Answer the user's question based ONLY on the following context. "
-            "Use easy way of explaning, do not load with heavy book like text only, you are a teacher, "
-            "teach in that way, do no provide excess text, do not make long explanation, keep simple. "
-            "If the answer is not in the context, say you don't know."
-        )
+        if not context_text:
+            # If no context (Greeting), just be a friendly assistant
+            system_instruction = "You are a helpful AI Tutor. Respond politely to the user and in Short"
+
+        else:
+            system_instruction = (
+                    "You are an AI tutor. Answer ONLY from the context. "
+                    "Explain simply, like a teacher, in short answers. "
+                    "If context lacks the answer, say you don't know."
+            )
 
     answer_prompt = ChatPromptTemplate.from_messages([
         ("system", system_instruction + "\n\nContext:\n{context}"),
