@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Tutor from "./pages/Tutor";
 import Hero from "./components/Hero";
 import Footer from "./components/Footer";
+import Studio from "./pages/Studio";
  
 const ProtectedLayout = ({ children }) => {
   const { getToken, userId, isLoaded } = useAuth();
@@ -93,6 +94,21 @@ const App = () => {
             <SignedIn>
               <ProtectedLayout>
                 <Tutor />
+              </ProtectedLayout>
+            </SignedIn>
+            <SignedOut>
+              <Navigate to="/" replace />
+            </SignedOut>
+          </>
+        }
+      />
+      <Route
+        path="/studio"
+        element={
+          <>
+            <SignedIn>
+              <ProtectedLayout>
+                <Studio />
               </ProtectedLayout>
             </SignedIn>
             <SignedOut>

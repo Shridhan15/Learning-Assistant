@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, BrainCircuit, Bot, Menu, X } from "lucide-react";
+import { Home, BrainCircuit, Bot, Menu, X, Camera } from "lucide-react";
 import { UserButton as ClerkUserButton } from "@clerk/clerk-react";
 import { images } from "../assets/assets";
 
@@ -12,6 +12,7 @@ const Navbar = () => {
     { name: "Home", path: "/", icon: <Home className="w-4 h-4" /> },
     { name: "Quiz", path: "/quiz", icon: <BrainCircuit className="w-4 h-4" /> },
     { name: "AI Tutor", path: "/tutor", icon: <Bot className="w-4 h-4" /> },
+    { name: "Studio", path: "/studio", icon: <Camera className="w-4 h-4" /> },
   ];
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
