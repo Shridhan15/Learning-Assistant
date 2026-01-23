@@ -43,14 +43,13 @@ const Home = () => {
       });
       const data = await response.json();
 
-      const mappedEvents = data.events.map((ev) => ({
-        // Preserve all original database fields (priority, category, description)
+      const mappedEvents = data.events.map((ev) => ({ 
         ...ev,
         id: ev.id,
         title: ev.title,
         start: ev.start_time,
         end: ev.end_time,
-        // Ensure these specific properties are at the top level for the UI
+        
         priority: ev.priority,
         category: ev.category,
       }));
@@ -60,8 +59,7 @@ const Home = () => {
       console.error("Error fetching events:", error);
     }
   };
-
-  // 2. Add Logic: Sending new event to Database
+ 
   const handleAddEvent = async (eventPayload) => {
     try {
       const token = await getToken();
@@ -75,8 +73,7 @@ const Home = () => {
         body: JSON.stringify(eventPayload),
       });
 
-      if (response.ok) {
-        // Refresh the list after successful addition
+      if (response.ok) { 
         fetchCalendarEvents();
       }
     } catch (error) {
@@ -176,8 +173,7 @@ const Home = () => {
           <TodaysHighlights results={allResults} />
         </div>
       )}
-
-      {/* Inside Home.jsx */}
+ 
       <div className="space-y-1">
         <div className="flex items-center gap-4">
           <div>
@@ -190,14 +186,8 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-3 shadow-2xl border border-white/10">
-          {/* ✅ Height control */}
-          <div className="h-[520px] md:h-[560px] overflow-hidden rounded-2xl">
-            <StudyCalendar
-              events={calendarEvents}
-              onAddEvent={handleAddEvent}
-            />
-          </div>
+        <div className="h-[520px] md:h-[560px]">
+          <StudyCalendar events={calendarEvents} onAddEvent={handleAddEvent} />
         </div>
       </div>
 

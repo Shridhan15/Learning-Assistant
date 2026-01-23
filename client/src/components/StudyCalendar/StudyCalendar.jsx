@@ -3,6 +3,8 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import "./StudyCalendarTheme.css";
+
 import {
   Plus,
   X,
@@ -18,8 +20,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
     date: null,
     events: [],
   });
-
-  // Default values set to General and Low (1)
+ 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -38,11 +39,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
       start_time: "",
       end_time: "",
     });
-
-  /**
-   * FIX: Corrects timezone offset so the local time selected by the user
-   * is what remains visible in the input field.
-   */
+ 
   const formatForInput = (isoStr) => {
     if (!isoStr) return "";
     const date = new Date(isoStr);
@@ -58,8 +55,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
         typeof eventStart === "string" ? eventStart : eventStart.toISOString();
       return eventDateStr.startsWith(arg.dateStr);
     });
-
-    // Preset start time to 09:00 AM local on the clicked day
+ 
     const localStart = new Date(arg.date);
     localStart.setHours(9, 0, 0, 0);
     const localEnd = new Date(arg.date);
@@ -87,8 +83,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
   const handleSubmit = () => {
     if (!formData.title.trim() || !formData.start_time || !formData.end_time)
       return;
-
-    // Respect user input exactly as selected
+ 
     onAddEvent({
       title: formData.title.trim(),
       description: formData.description?.trim() || null,
@@ -104,15 +99,13 @@ const StudyCalendar = ({ events, onAddEvent }) => {
 
   const formattedEvents = useMemo(
     () =>
-      events.map((e) => ({
-        // FullCalendar Standard Keys
+      events.map((e) => ({ 
         id: e.id,
         title: e.title,
         start: e.start_time || e.start,
         end: e.end_time || e.end,
-
-        // Pass the raw data through so the UI list can read it
-        priority: Number(e.priority), // Force numeric to be safe
+ 
+        priority: Number(e.priority),  
         category: e.category,
         description: e.description,
 
@@ -160,49 +153,60 @@ const StudyCalendar = ({ events, onAddEvent }) => {
   ];
 
   return (
-    <div className=" bg-gradient-to-br from-slate-50 via-indigo-50/40 to-purple-50/40 p-2 ">
-      <div className="max-w-6xl mx-auto space-y-2">
-        {/* Calendar Card */}
-        <div className="rounded-3xl border border-slate-200/70 bg-white/80 backdrop-blur-xl shadow-[0_10px_40px_-20px_rgba(15,23,42,0.35)] overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <CalIcon className="w-4 h-4 text-indigo-600" />
-              Calendar
-            </p>
-
-            <span className="text-xs font-semibold text-slate-400">
-              Month • Week
-            </span>
+    <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950  ">
+      <div className="p-2">
+        <div className="max-w-6xl mx-auto space-y-3">
+          {/* Calendar Card   */}
+          <div className="rounded-3xl border border-white/10 bg-slate-950/70 backdrop-blur-xl shadow-2xl  ">
             {/* Header */}
-            <button
-              onClick={() => setModalOpen(true)}
-              className="group inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 font-semibold text-white
+            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between gap-4">
+              {/* Left */}
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-2xl bg-white/5 border border-white/10">
+                  <CalIcon className="w-5 h-5 text-indigo-300" />
+                </div>
+
+                <div>
+                  <p className="text-base font-extrabold text-white leading-tight">
+                    Calendar
+                  </p>
+                  <p className="text-xs text-white/50 font-semibold">
+                    Month • Week view
+                  </p>
+                </div>
+              </div>
+
+              {/* Right */}
+              <button
+                onClick={() => setModalOpen(true)}
+                className="group inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 font-extrabold text-white
                      bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg
                      hover:shadow-xl hover:brightness-110 transition-all duration-200"
-            >
-              <Plus className="w-5 h-5 group-hover:rotate-12 transition-transform duration-200" />
-              New Event
-            </button>
-          </div>
+              >
+                <Plus className="w-5 h-5 group-hover:rotate-12 transition-transform duration-200" />
+                New Event
+              </button>
+            </div>
 
-          <div className="h-[72vh] p-4 md:p-5 overflow-auto no-scrollbar">
-            <FullCalendar
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              initialView="dayGridMonth"
-              events={formattedEvents}
-              dateClick={handleDateClick}
-              selectable={true}
-              select={handleSelect}
-              height="100%" // ✅ fills parent
-              contentHeight="auto" // ✅ avoid collapse
-              expandRows={true} // ✅ month rows fill space
-              headerToolbar={{
-                left: "prev,next",
-                center: "title",
-                right: "today dayGridMonth,timeGridWeek",
-              }}
-              dayMaxEvents={3}
-            />
+            {/* Calendar Body */}
+            <div className="h-[72vh] p-4 md:p-5 overflow-y-auto overflow-x-hidden no-scrollbar   study-calendar-dark">
+              <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="dayGridMonth"
+                events={formattedEvents}
+                dateClick={handleDateClick}
+                selectable={true}
+                select={handleSelect}
+                height="100%"
+                expandRows={true}
+                headerToolbar={{
+                  left: "prev,next",
+                  center: "title",
+                  right: "today dayGridMonth,timeGridWeek",
+                }}
+                dayMaxEvents={3}
+              />
+            </div>
           </div>
         </div>
       </div>

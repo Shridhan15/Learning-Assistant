@@ -1,0 +1,210 @@
+ 
+.study-calendar-dark {
+  --sc-bg: rgba(255, 255, 255, 0.04);
+  --sc-border: rgba(255, 255, 255, 0.08);
+  --sc-border-soft: rgba(255, 255, 255, 0.06);
+  --sc-text: rgba(255, 255, 255, 0.92);
+  --sc-muted: rgba(255, 255, 255, 0.55);
+  --sc-muted-2: rgba(255, 255, 255, 0.35);
+
+  --sc-accent: rgba(99, 102, 241, 1); /* indigo */
+  --sc-accent-soft: rgba(99, 102, 241, 0.18);
+  --sc-accent-soft-2: rgba(99, 102, 241, 0.12);
+
+  --sc-card-shadow: 0 18px 60px -30px rgba(0, 0, 0, 0.75);
+  --sc-inner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Calendar root */
+.study-calendar-dark .fc {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Arial;
+  color: var(--sc-text);
+
+  --fc-page-bg-color: transparent;
+  --fc-border-color: var(--sc-border-soft);
+  --fc-today-bg-color: rgba(99, 102, 241, 0.06);
+}
+
+/* Make FullCalendar background glassy */
+.study-calendar-dark .fc .fc-view-harness {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0px !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+/* Toolbar compact */
+.study-calendar-dark .fc .fc-toolbar {
+  padding: 8px 6px !important;
+  margin-bottom: 10px !important;
+}
+
+/* Title */
+.study-calendar-dark .fc .fc-toolbar-title {
+  font-size: 1.02rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.2px !important;
+  color: var(--sc-text) !important;
+}
+
+/* Toolbar buttons */
+.study-calendar-dark .fc .fc-button {
+  border-radius: 14px !important;
+  border: 1px solid var(--sc-border) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--sc-text) !important;
+
+  font-weight: 900 !important;
+  font-size: 0.78rem !important;
+  padding: 0.38rem 0.75rem !important;
+
+  box-shadow: 0 10px 26px -18px rgba(0, 0, 0, 0.8) !important;
+  transition: all 0.18s ease !important;
+}
+
+.study-calendar-dark .fc .fc-button:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+.study-calendar-dark .fc .fc-button:active {
+  transform: translateY(0px);
+}
+
+.study-calendar-dark .fc .fc-button:focus {
+  box-shadow: 0 0 0 4px var(--sc-accent-soft) !important;
+}
+
+/* Active view button (month/week) */
+.study-calendar-dark .fc .fc-button-primary:not(:disabled).fc-button-active {
+  background: var(--sc-accent-soft-2) !important;
+  border-color: rgba(99, 102, 241, 0.45) !important;
+  color: var(--sc-text) !important;
+}
+
+/* Header row (Sun Mon Tue...) */
+.study-calendar-dark .fc .fc-col-header-cell {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: var(--sc-border-soft) !important;
+}
+
+.study-calendar-dark .fc .fc-col-header-cell-cushion {
+  padding: 10px 0 !important;
+  font-size: 0.78rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.4px !important;
+  color: var(--sc-muted) !important;
+}
+
+/* Day cells border */
+.study-calendar-dark .fc-theme-standard td,
+.study-calendar-dark .fc-theme-standard th {
+  border: 1px solid var(--sc-border-soft) !important;
+}
+
+/* Day number */
+.study-calendar-dark .fc .fc-daygrid-day-number {
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-weight: 900 !important;
+  font-size: 0.78rem !important;
+  padding: 7px 10px !important;
+}
+
+/* Today highlight */
+.study-calendar-dark .fc-day-today {
+  background: rgba(99, 102, 241, 0.07) !important;
+}
+
+/* Hover effect */
+.study-calendar-dark .fc .fc-daygrid-day:hover {
+  background: rgba(255, 255, 255, 0.035) !important;
+  transition: 0.18s ease;
+}
+
+/* Event pills */
+.study-calendar-dark .fc-v-event,
+.study-calendar-dark .fc-h-event {
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 3px 10px !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+
+  box-shadow: 0 14px 35px -26px rgba(0, 0, 0, 0.95) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Event title */
+.study-calendar-dark .fc-event-title {
+  padding: 1px 0 !important;
+}
+
+/* "more" link */
+.study-calendar-dark .fc .fc-daygrid-more-link {
+  color: rgba(129, 140, 248, 0.95) !important;
+  font-weight: 900 !important;
+  font-size: 0.74rem !important;
+}
+
+/* Popover (when clicking +more) */
+.study-calendar-dark .fc-popover {
+  background: rgba(2, 6, 23, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 80px -40px rgba(0, 0, 0, 0.95) !important;
+  overflow: hidden !important;
+}
+
+.study-calendar-dark .fc-popover-header {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-weight: 900 !important;
+}
+
+.study-calendar-dark .fc-popover-body {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+ 
+.study-calendar-dark .fc-timegrid-slot-label,
+.study-calendar-dark .fc-timegrid-axis-cushion,
+.study-calendar-dark .fc-timegrid-slot {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+ 
+.study-calendar-dark .fc-scroller::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.study-calendar-dark .fc-scroller::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.study-calendar-dark .fc-scroller::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+.study-calendar-dark .fc a {
+  color: var(--sc-text) !important;
+}
+.study-calendar-dark .fc a {
+  color: rgba(255, 255, 255, 0.92) !important;
+  text-decoration: none !important;
+} 
+.study-calendar-dark .fc .fc-scroller {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+.study-calendar-dark .fc .fc-scrollgrid {
+  border: none !important;
+  border-radius: 0px !important;
+}
