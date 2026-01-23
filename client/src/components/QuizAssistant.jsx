@@ -77,7 +77,7 @@ const QuizAssistant = ({ getToken, userId }) => {
     if (!userId) return;
 
     // Convert HTTP URL to WS URL (e.g., http://localhost:8000 -> ws://localhost:8000)
-    
+
     const wsBaseUrl = API_BASE_URL.replace("http", "ws");
     const wsUrl = `${wsBaseUrl}/ws/progress/${userId}`;
 
@@ -230,9 +230,17 @@ const QuizAssistant = ({ getToken, userId }) => {
 
   const submitQuiz = async () => {
     let calculatedScore = 0;
+    const mistakes = [];
     quizData.forEach((q) => {
       if (userAnswers[q.id] === q.correctAnswer) {
         calculatedScore += 1;
+      } else {
+        mistakes.push({
+          question: q.question,
+          wrong_answer: userAnswers[q.id] || "Skipped",
+          correct_answer: q.correctAnswer,
+          explanation: q.explanation || "No explanation provided.",
+        });
       }
     });
     setScore(calculatedScore);
@@ -246,6 +254,7 @@ const QuizAssistant = ({ getToken, userId }) => {
           topic: topic,
           score: calculatedScore,
           total_questions: quizData.length,
+          mistakes: mistakes,
         }),
       });
       console.log("Quiz result saved to database!");

@@ -291,9 +291,6 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
 
     return {"response": response.content}
 
-class QuizRequest(BaseModel):
-    topic: str
-    filename: str
  
 @app.get("/files")
 def list_files(user_id: str = Header(None)):  
@@ -407,11 +404,24 @@ def get_user_results(user_id: str = Header(None)):
         return {"results": []}
      
 
+
+class QuizRequest(BaseModel):
+    topic: str
+    filename: str
+
+class MistakeSchema(BaseModel):
+    question: str
+    wrong_answer: str
+    correct_answer: str
+    explanation: str
+
+
 class QuizResultSchema(BaseModel):
     filename: str
     topic: str
     score: int
     total_questions: int
+    mistakes: List[MistakeSchema] = []
 
 # Save Endpoint
 @app.post("/save-result")
@@ -425,7 +435,25 @@ async def save_quiz_result(result: QuizResultSchema, user_id: str = Header(...))
             "total_questions": result.total_questions
         }).execute()
         
-        return {"message": "Result saved successfully"}
+        if result.mistakes:
+            # Prepare the list of dictionaries for bulk insert
+            mistakes_data = [
+                {
+                    "user_id": user_id,
+                    "topic": result.topic,
+                    "question": m.question,
+                    "wrong_answer": m.wrong_answer,
+                    "correct_answer": m.correct_answer,
+                    "explanation": m.explanation
+                }
+                for m in result.mistakes
+            ]
+            
+            # Bulk Insert (Efficient)
+            supabase.table("mistakes").insert(mistakes_data).execute()
+        
+        return {"message": "Result and mistakes saved successfully"}
+    
     except Exception as e:
         print(f"Error saving result: {e}") 
         raise HTTPException(status_code=500, detail="Failed to save result")
