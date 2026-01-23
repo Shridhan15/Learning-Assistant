@@ -8,13 +8,14 @@ import shutil
 import string
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header,WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field,validator
 from dotenv import load_dotenv
 from groq import Groq
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from typing import List, Optional
+from typing import List, Optional 
+from datetime import datetime
 from pinecone import Pinecone, ServerlessSpec
 from supabase import create_client, Client 
 from supabase.client import ClientOptions
@@ -188,12 +189,12 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
                 MessagesPlaceholder(variable_name="chat_history"),
                 ("user", "{input}"),
                 (
-                    "system",
-                    "Given the above conversation, generate a search query to look up in order to get information relevant to the conversation. "
-                    "IMPORTANT: If the user is asking a follow-up question, combine it with previous context. "
-                    "If the user is asking a completely new question (changing the topic), ignore the history and generate a query for the new topic only. "
-                    "Return ONLY the query string, nothing else."
-                )
+           "Task: Generate concise database search query from input. "
+"STRICT RULES: "
+"1. DO NOT answer the question or define terms. "
+"2. Extract keywords only. "
+"3. Output ONLY the raw query string."
+        ),
             ])
 
             print("DEBUG: Rephrasing for search query...")
@@ -236,9 +237,9 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
              """
 Role: Academic Critic (Feynman Technique). Task: Test user's understanding. Rules:
 
-If input is greeting/topic: Do NOT grade. Ask user to explain concept simply.
+If input is greeting/topic: Ask user to explain concept simply.
 
-If explanation: Grade against Context. Report:   Misconceptions, Missing Details, Brief Feedback. Tone: Rigorous but fair."""
+If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone: Rigorous but fair."""
         )
 
     elif request.is_socratic:
@@ -644,6 +645,7 @@ class DeleteBookRequest(BaseModel):
 
 @app.post("/delete-book")
 async def delete_book(
+
     req: DeleteBookRequest, 
     user_id: str = Header(..., alias="user-id")
 ):
@@ -699,4 +701,71 @@ async def delete_book(
 
     except Exception as e:
         print(f"❌ Error deleting book: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+class CalendarEventCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    start_time: str  # ISO from React
+    end_time: str
+    category: str = "Revision"
+    priority: int = Field(1, ge=1, le=3)
+
+    @validator('start_time', 'end_time')
+    def validate_iso(cls, v):
+        datetime.fromisoformat(v.replace('Z', '+00:00'))
+        return v
+
+# 1. ADD EVENT (Your exact style) 
+@app.post("/add-calendar-event")
+async def add_event(
+    event: CalendarEventCreate,
+    authorization: str = Header(None),
+    user_id: str = Header(None)
+):
+    # Standard security check you already have
+    if not authorization or not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        event_data = {
+            "user_id": user_id,
+            "title": event.title.strip(),
+            "description": event.description.strip() if event.description else None,
+            "start_time": event.start_time,
+            "end_time": event.end_time,
+            "category": event.category,  
+            "priority": event.priority, 
+            "source": "manual"
+        }
+        # Persist to Supabase
+        response = supabase.table("study_events").insert(event_data).execute()
+        return {"status": "success", "data": response.data[0] if response.data else None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 2. GET EVENTS
+@app.get("/get-calendar-events")
+async def get_events(
+    authorization: str = Header(None),
+    user_id: str = Header(None),
+    start_date: Optional[str] = None,  # YYYY-MM-DD
+    end_date: Optional[str] = None
+):
+    if not authorization or not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        query = supabase.table("study_events").select("*").eq("user_id", user_id).order("start_time")
+        
+        if start_date:
+            query = query.gte("start_time", f"{start_date}T00:00:00Z")
+        if end_date:
+            query = query.lte("end_time", f"{end_date}T23:59:59Z")
+            
+        response = query.execute()
+        return {"status": "success", "events": response.data, "count": len(response.data)}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
