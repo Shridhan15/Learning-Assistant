@@ -2,7 +2,8 @@ import os
 import json
 import instructor
 from fastapi import HTTPException
-
+import traceback
+import time
 
 import shutil
 import string
@@ -35,7 +36,10 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 #  file imports
 from app.rag import load_pdf, chunk_text, store_in_pinecone, retrieve
 from app.services.websocket_manager import manager
-from app.services.vision_service import analyze_chat_image
+from app.services.vision_service import analyze_chat_image 
+from app.supabase import supabase as db
+from app.services import groq_podcast as llm
+from app.services import azure_voice as tts
 
 app = FastAPI()
 
@@ -66,6 +70,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def read_root():
+    return {"status": "StudyMate AI Service is Running"}
 
 UPLOAD_DIR = "app/data/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -135,11 +143,9 @@ def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             )
             print(f"DEBUG: Image Description: {image_description[:50]}...")
         except Exception as e:
-            print(f"Error processing image: {e}")
-            # If vision fails, we just proceed with text only to avoid crashing
+            print(f"Error processing image: {e}") 
             pass
-
-    # --- SAVE USER MESSAGE TO DB ---  
+ 
     try:
         supabase.table("chat_history").insert({
             "user_id": user_id,
@@ -274,11 +280,10 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
     
     response = chain.invoke({
         "context": context_text,
-        "chat_history": chat_history[:-1], # Again, exclude last msg to avoid duplication
+        "chat_history": chat_history[:-1],  
         "input": effective_message
     })
-
-    # --- STEP 6: SAVE AI RESPONSE TO DB ---
+ 
     try:
         supabase.table("chat_history").insert({
             "user_id": user_id,
@@ -391,18 +396,30 @@ def get_user_results(user_id: str = Header(None)):
     if not user_id:
         return {"results": []}
 
-    try: 
-        response = supabase.table("quiz_results")\
-            .select("*")\
-            .eq("user_id", user_id)\
-            .order("created_at", desc=True)\
-            .execute()
+    max_retries = 3
+    response = None
+
+    for attempt in range(max_retries):
+        try:
+            # 1. Try to execute the query
+            response = supabase.table("quiz_results")\
+                .select("*")\
+                .eq("user_id", user_id)\
+                .order("created_at", desc=True)\
+                .execute()
+            break 
+
+        except Exception as e:
+            print(f"results Attempt {attempt + 1} failed: {e}")
+             
+            if attempt == max_retries - 1:
+                print(f"🔥 CRITICAL FAILURE in /results: {e}") 
+                raise HTTPException(status_code=500, detail="Server disconnected")
             
-        return {"results": response.data}
-    except Exception as e:
-        print(f"Error fetching results: {e}")
-        return {"results": []}
-     
+             
+            time.sleep(0.5) 
+
+    return {"results": response.data}
 
 
 class QuizRequest(BaseModel):
@@ -773,7 +790,7 @@ async def add_event(
 async def get_events(
     authorization: str = Header(None),
     user_id: str = Header(None),
-    start_date: Optional[str] = None,  # YYYY-MM-DD
+    start_date: Optional[str] = None, 
     end_date: Optional[str] = None
 ):
     if not authorization or not user_id:
@@ -786,8 +803,72 @@ async def get_events(
             query = query.gte("start_time", f"{start_date}T00:00:00Z")
         if end_date:
             query = query.lte("end_time", f"{end_date}T23:59:59Z")
-            
-        response = query.execute()
+
+        max_retries = 3
+        response = None
+        
+        for attempt in range(max_retries):
+            try:
+                response = query.execute()
+                break 
+            except Exception as e:
+                print(f" Attempt {attempt + 1} failed: {e}")
+                if attempt == max_retries - 1:
+                    raise e 
+                time.sleep(0.5) 
+
         return {"status": "success", "events": response.data, "count": len(response.data)}
+
     except Exception as e:
+        print(f" CRITICAL FAILURE in /get-calendar-events for user {user_id}")
+        traceback.print_exc() 
+        raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
+    
+
+ 
+class PodcastRequest(BaseModel):
+    user_id: str
+
+@app.post("/daily-podcast")
+async def get_daily_podcast(request: PodcastRequest):
+    user_id = request.user_id
+    print(f"\n--- Processing podcast request for: {user_id} ---")
+ 
+    print("Checking for existing daily recap...")
+    existing_url = db.get_podcast_url_if_exists(user_id)
+    
+    if existing_url:
+        print(f"CACHE HIT: Found existing audio for today.")
+        print(f"URL: {existing_url[:50]}...")  
+        return {"url": existing_url, "status": "cached"}
+
+    
+    print(" CACHE MISS: No fresh audio found. Starting generation sequence.")
+    
+   
+    mistakes = db.fetch_yesterday_mistakes(user_id)
+    
+    if not mistakes:
+        print(" ABORT: No mistakes found for yesterday. Nothing to record.")
+        return {"url": None, "status": "no_data", "message": "No mistakes found for yesterday."}
+
+    try: 
+        print("  Generating script with Groq...")
+        script = llm.generate_podcast_script(mistakes)
+        print("   -> Script generated successfully.")
+         
+        print("Synthesizing audio with Azure...")
+        audio_bytes = tts.synthesize_audio(script)
+        print(f"   -> Audio synthesized ({len(audio_bytes)} bytes).")
+        
+      
+        print(" Uploading to Supabase Storage...")
+        public_url = db.upload_podcast_audio(user_id, audio_bytes)
+        print(f"   -> Upload complete.")
+        
+        print(" SUCCESS: Podcast generated and served.")
+        return {"url": public_url, "status": "generated"}
+
+    except Exception as e:
+        print(f" CRITICAL ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))

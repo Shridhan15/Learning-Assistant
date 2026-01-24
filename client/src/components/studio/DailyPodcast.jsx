@@ -1,29 +1,34 @@
 import React, { useState } from "react";
 import { useUser } from "@clerk/clerk-react";
-import { FaPlay, FaPause, FaHeadphones } from "react-icons/fa";
+import { FaPlay, FaPause, FaHeadphones } from "react-icons/fa"; 
+import { useAuth } from "@clerk/clerk-react";
 
 const DailyPodcast = () => {
   const { user } = useUser();
+  const { getToken, userId } = useAuth();
   const [audioUrl, setAudioUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(null); // e.g. "No mistakes found!"
+  const [statusMessage, setStatusMessage] = useState(null);   
 
-  // 1. configuration
-  // Replace this with your actual Render Backend URL
-  const BACKEND_URL = "https://your-python-backend.onrender.com";
+  
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-  const handlePlay = async () => {
-    // If audio is already loaded, don't fetch again
+  const handlePlay = async () => { 
     if (audioUrl) return;
 
     setIsLoading(true);
     setStatusMessage(null);
 
-    try {
-      // 2. Call your Python Backend
-      const response = await fetch(`${BACKEND_URL}/api/podcast/daily`, {
+    try { 
+      const token = await getToken();
+
+      const response = await fetch(`${API_BASE_URL}/daily-podcast`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, 
+          "user-id": user.id, 
+        }, 
         body: JSON.stringify({ user_id: user.id }),
       });
 
@@ -66,10 +71,8 @@ const DailyPodcast = () => {
               "Listen to a personalized deep-dive into yesterday's mistakes. AI-generated, just for you."}
           </p>
         </div>
-
-        {/* Right: The Player / Action Button */}
-        <div className="flex-shrink-0">
-          {/* SCENARIO 1: Loading State */}
+ 
+        <div className="flex-shrink-0"> 
           {isLoading && (
             <div className="flex flex-col items-center justify-center w-24 h-24 rounded-full bg-gray-800 border border-gray-700">
               <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
@@ -78,24 +81,22 @@ const DailyPodcast = () => {
               </span>
             </div>
           )}
-
-          {/* SCENARIO 2: Ready to Play (Initial State) */}
+ 
           {!isLoading && !audioUrl && (
             <button
               onClick={handlePlay}
-              disabled={!!statusMessage} // Disable if "No mistakes" found
+              disabled={!!statusMessage}  
               className={`group relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 bg-white rounded-full shadow-lg hover:scale-105 transition-transform duration-300 ${statusMessage ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <FaPlay className="text-3xl md:text-4xl text-indigo-900 ml-2 group-hover:text-indigo-700 transition-colors" />
 
-              {/* Ping Animation Ring (Only if valid) */}
+               
               {!statusMessage && (
                 <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-[ping_2s_ease-in-out_infinite]"></div>
               )}
             </button>
           )}
-
-          {/* SCENARIO 3: Audio Loaded (Player) */}
+ 
           {!isLoading && audioUrl && (
             <div className="w-full md:w-80 bg-gray-800/80 p-3 rounded-lg border border-gray-600 backdrop-blur">
               <audio controls autoPlay src={audioUrl} className="w-full h-10" />

@@ -16,8 +16,7 @@ Start with "Good morning! Here is your quick review."
 
 def generate_podcast_script(mistakes: list) -> str:
     """Turns a list of mistake objects into a natural language script."""
-    
-    # 1. Format context for the LLM
+     
     mistakes_context = ""
     for m in mistakes:
         mistakes_context += f"- Topic: {m.get('topic', 'General')}\n"
@@ -25,14 +24,14 @@ def generate_podcast_script(mistakes: list) -> str:
         mistakes_context += f"  Correct Answer: {m['correct_answer']}\n"
         mistakes_context += f"  Explanation: {m['explanation']}\n\n"
 
-    # 2. Call Groq API
+    #    Groq API
     chat_completion = client.chat.completions.create(
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": f"Here are the mistakes to cover:\n{mistakes_context}"}
         ],
-        model="llama3-8b-8192", # Or mixstral-8x7b-32768
-        temperature=0.6, # Slightly lower for more consistent output
+        model="llama-3.1-8b-instant",  
+        temperature=0.6,  
     )
 
     return chat_completion.choices[0].message.content
