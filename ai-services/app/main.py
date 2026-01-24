@@ -856,6 +856,7 @@ async def get_daily_podcast(request: PodcastRequest):
         print("  Generating script with Groq...")
         script = llm.generate_podcast_script(mistakes)
         print("   -> Script generated successfully.")
+        print(f"   -> Script Preview: {script[:200]}...")
          
         print("Synthesizing audio with Azure...")
         audio_bytes = tts.synthesize_audio(script)
