@@ -1,7 +1,7 @@
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-export const generateQuizApi = async (token, userId, filename, topic) => {
+export const generateQuizApi = async (token, userId, filename, topic,numQuestions,difficulty) => {
     try {
         const response = await fetch(`${API_BASE_URL}/generate-quiz`, {
             method: "POST",
@@ -13,11 +13,14 @@ export const generateQuizApi = async (token, userId, filename, topic) => {
             body: JSON.stringify({
                 topic: topic,
                 filename: filename,
+                num_questions: numQuestions, 
+                difficulty: difficulty,
             }),
         });
 
         if (!response.ok) {
-            throw new Error("Failed to generate quiz");
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || "Failed to generate quiz");
         }
 
         return await response.json();

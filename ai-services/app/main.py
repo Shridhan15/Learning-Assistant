@@ -15,7 +15,7 @@ from groq import Groq
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from typing import List, Optional 
+from typing import List, Optional,Literal
 from datetime import datetime
 from pinecone import Pinecone, ServerlessSpec
 from supabase import create_client, Client 
@@ -425,6 +425,8 @@ def get_user_results(user_id: str = Header(None)):
 class QuizRequest(BaseModel):
     topic: str
     filename: str
+    num_questions: int = Field(5, ge=1, le=20, description="Number of questions to generate")
+    difficulty: Literal["Easy", "Medium", "Hard"] = Field("Medium", description="Quiz difficulty")
 
 class MistakeSchema(BaseModel):
     question: str
@@ -438,30 +440,37 @@ class QuizResultSchema(BaseModel):
     topic: str
     score: int
     total_questions: int
+    difficulty: Literal["Easy", "Medium", "Hard"] = "Medium"
     mistakes: List[MistakeSchema] = []
 
 # Save Endpoint
 @app.post("/save-result")
 async def save_quiz_result(result: QuizResultSchema, user_id: str = Header(...)):
     try:
-        supabase.table("quiz_results").insert({
+        quiz_insert_response = supabase.table("quiz_results").insert({
             "user_id": user_id,
             "filename": result.filename,
             "topic": result.topic,
             "score": result.score,
-            "total_questions": result.total_questions
+            "total_questions": result.total_questions,
+            "difficulty": result.difficulty
         }).execute()
+        
+        new_quiz_id = quiz_insert_response.data[0]['id']
+
         
         if result.mistakes:
             # Prepare the list of dictionaries for bulk insert
             mistakes_data = [
                 {
                     "user_id": user_id,
+                    "quiz_result_id": new_quiz_id,
                     "topic": result.topic,
                     "question": m.question,
                     "wrong_answer": m.wrong_answer,
                     "correct_answer": m.correct_answer,
-                    "explanation": m.explanation
+                    "explanation": m.explanation,
+                    
                 }
                 for m in result.mistakes
             ]
@@ -519,7 +528,7 @@ def clean_context_text(text: str) -> str:
 
 @app.post("/generate-quiz")
 async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
-    print(f"Generating quiz for topic: {req.topic}")
+    print(f"Generating {req.num_questions} questions ({req.difficulty}) for: {req.topic}")
     
     # Retrieve Context
     retrieved_chunks = retrieve(req.topic, req.filename, user_id)
@@ -530,6 +539,39 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
     raw_context = "\n".join(retrieved_chunks)
     clean_context = clean_context_text(raw_context)
 
+    difficulty_instructions = {
+    "Easy": (
+        "EASY MODE (Recall Only):\n"
+        "- Ask ONLY direct factual recall questions from the text.\n"
+        "- Allowed forms: What / Who / When / Where / Define.\n"
+        "- MUST be answerable from ONE explicit line in the text.\n"
+        "- NO why/how, NO scenario, NO interpretation, NO multi-step logic.\n"
+        "- Distractors must be clearly wrong but related (same topic family)."
+    ),
+    "Medium": (
+        "MEDIUM MODE (Understanding Only):\n"
+        "- Ask ONLY understanding-based questions (How/Why/Meaning).\n"
+        "- Require interpreting cause-effect, process, or concept meaning from the text.\n"
+        "- MUST still be single-hop reasoning (1-step thinking).\n"
+        "- NO scenario, NO case study, NO prediction, NO multi-hop.\n"
+        "- Distractors must be plausible misconceptions."
+    ),
+    "Hard": (
+        "HARD MODE (Scenario + Multi-hop ONLY):\n"
+        "- NEVER ask direct recall questions.\n"
+        "- EVERY question MUST be scenario-based (use: Suppose/Imagine/If/A system...).\n"
+        "- EVERY question MUST require multi-hop reasoning by combining >=2 distinct facts "
+        "from different parts of the text.\n"
+        "- Ask for best outcome/most appropriate action/predicted result based on scenario.\n"
+        "- Distractors must be highly plausible and partially correct but wrong on a nuance.\n"
+        "- If the answer is directly stated in one sentence, REWRITE the question."
+    )
+}
+
+    selected_difficulty_prompt = difficulty_instructions.get(req.difficulty, difficulty_instructions["Medium"])
+
+    
+
     #  Call Groq with Pydantic Validation
     try: 
         quiz_data = client.chat.completions.create(
@@ -537,46 +579,53 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
             max_retries=3,
             response_model=QuizResponse,  
             messages=[
-                {
-                    "role": "system", 
-                     "content": """
-                    You are an expert assessment specialist. Create a 5-question multiple choice quiz based STRICTLY on the provided context.
-                    TASK:
-                    1. First, summarize the provided text in the 'context_summary' field.
-                    2. Then, create exactly 5 multiple choice questions based on that summary.
-                    
-                    CRITICAL RULES FOR OPTIONS:
-                    1. **No Ambiguity:** Ensure there is only ONE indisputably correct answer based on the text.
-                    2. **Handle Lists Carefully:** If the text states "A, B, and C cause X", do NOT create a question "What causes X?" with options "A", "B", and "C". This is confusing. Instead, ask "Which of the following is NOT a cause?" or combine them.
-                    3. **Clear Distractors:** Incorrect options must be plausible but clearly wrong based on the text. Do not use vague options like "Other" or "Various factors".
-                    4. **Self-Contained:** The question must be answerable purely from the provided text chunk.
-                    5. **No Repetition:** Do not repeat questions or options.
-                    
-                    DO NOT FOCUS ON WORDS LIKE
-                    "Exercises", "Think as you read", "Understanding the text", 
-        "Vocabulary", "Glossary", "Acknowledgements", "About the Author"
+    {
+        "role": "system", 
+        "content": f"""
+        You are an expert psychometrician and assessment specialist. Your goal is to generate a {req.num_questions}-question multiple-choice quiz that strictly adheres to the requested difficulty level.
 
-                    YOUR TASK IS TO PROVIDE QUIZ NOT ANSWERING THE QUESTION ASKED IN CONTEXT
-                    """
-                },
-                {
-                    "role": "user", 
-                    "content": f"""
-I have provided the text below. Please analyze it and generate the quiz.
+        CONTEXT ANALYSIS:
+        1. Analyze the provided text.
+        2. Identify the core concepts, not just keywords.
+        3. Generate a summary (context_summary) that captures the nuance required for the questions.
 
------ BEGIN SOURCE TEXT -----
-{clean_context}
------ END SOURCE TEXT -----
+        STRICT DIFFICULTY ENFORCEMENT: {req.difficulty.upper()}
+        {selected_difficulty_prompt}
 
-Topic: {req.topic}
+        CRITICAL QUESTION DESIGN RULES:
+        1. **One Clear Truth:** Ensure exactly one option is indisputably correct based *only* on the text.
+        2. **No "All of the above":** Do not use "All of the above" or "None of the above" as options.
+        3. **Distractor Quality:** - For Hard/Medium: Distractors must be conceptually related (e.g., if the answer is a specific protein, distractors should be other proteins mentioned in the text, not random words).
+           - Avoid negative framing (e.g., "Which is NOT") unless absolutely necessary.
+        4. **Independence:** The answer to one question should not reveal the answer to another.
+        NON-NEGOTIABLE RULES:
+1) SOURCE TEXT ONLY (no outside knowledge).
+2) Exactly ONE correct option (A–D).
+3) Exactly 4 options. No All/None.
+4) No negative framing (NOT/EXCEPT).
+5) Questions must be independent.
+6) Distractors must be concept-related.
+        
+        EXCLUSIONS:
+        Ignore sections labeled "Exercises", "Glossary", "References", or "About the Author".
 
-INSTRUCTION: 
-1. Do NOT continue the text above. 
-2. Do NOT list the vocabulary.
-3. Start the 'QuizResponse' tool call immediately.
-"""
-                }
-            ],
+        OUTPUT FORMAT:
+        Call the 'QuizResponse' tool immediately.
+        """
+    },
+    {
+        "role": "user", 
+        "content": f"""
+        Generate the quiz based on this text:
+
+        ----- BEGIN SOURCE TEXT -----
+        {clean_context}
+        ----- END SOURCE TEXT -----
+
+        Topic: {req.topic}
+        """
+    }
+],
             temperature=0.3,  
         )
  

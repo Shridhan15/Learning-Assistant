@@ -14,6 +14,7 @@ import {
   Target,
   Brain,
   ArrowRight,
+  ChevronDown,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
@@ -44,6 +45,8 @@ const QuizAssistant = ({ getToken, userId }) => {
   const [progress, setProgress] = useState(0);
   const [statusMsg, setStatusMsg] = useState("Initializing...");
   const socketRef = useRef(null);
+  const [numQuestions, setNumQuestions] = useState(5);
+  const [difficulty, setDifficulty] = useState("Medium");
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -169,6 +172,8 @@ const QuizAssistant = ({ getToken, userId }) => {
         userId,
         activeFile.name,
         activeTopic,
+        numQuestions,
+        difficulty,
       );
 
       if (data.questions && data.questions.length > 0) {
@@ -254,6 +259,7 @@ const QuizAssistant = ({ getToken, userId }) => {
           topic: topic,
           score: calculatedScore,
           total_questions: quizData.length,
+          difficulty: difficulty,
           mistakes: mistakes,
         }),
       });
@@ -302,7 +308,7 @@ const QuizAssistant = ({ getToken, userId }) => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-white flex items-center justify-center p-4  md:p-8 font-sans relative overflow-hidden">
+    <div className="min-h-screen w-full bg-slate-950 text-white flex items-center justify-center p-4  md:p-6 font-sans relative overflow-hidden">
       {/* --- Background Effects --- */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
       <div className="fixed  top-10 left-20 w-72 h-72 bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none -z-10" />
@@ -385,13 +391,13 @@ const QuizAssistant = ({ getToken, userId }) => {
 
         <div className="flex-1 flex flex-col h-full relative overflow-y-auto no-scrollbar">
           {/* Decorative Header Background */}
-          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
+          <div className="absolute top-0 left-0 w-full h-28 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
 
-          <div className="flex-1 p-2 md:p-10 lg:p-12 max-w-4xl mx-auto w-full z-10 flex flex-col justify-center">
+          <div className="flex-1 p-2 md:p-8 lg:p-10 max-w-4xl mx-auto w-full z-10 flex flex-col justify-center">
             {/* Header (Only show on Step 1 & 2) */}
             {(step === 1 || step === 2) && (
-              <div className="mb-8 text-center md:text-left">
-                <h1 className="text-3xl font-bold text-white mb-2 flex items-center justify-center md:justify-start gap-3">
+              <div className="mb-6 text-center md:text-left">
+                <h1 className="text-3xl font-bold text-white mb-1 flex items-center justify-center md:justify-start gap-3">
                   AI Quiz Master{" "}
                   <Sparkles className="w-5 h-5 text-indigo-400" />
                 </h1>
@@ -465,62 +471,113 @@ const QuizAssistant = ({ getToken, userId }) => {
 
             {/* STEP 2: TOPIC SELECTION */}
             {step === 2 && (
-              <div className="w-full max-w-2xl animate-in slide-in-from-right-8 duration-300">
-                {/* File Badge */}
-                <div className="flex items-center gap-2 bg-indigo-950/40 p-4 rounded-xl border border-indigo-500/20 mb-8">
-                  <div className="w-12 h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400 shrink-0">
-                    <CheckCircle className="w-6 h-6" />
+              <div className="w-full max-w-2xl animate-in slide-in-from-right-8 duration-300 mx-auto">
+                {/* --- File Badge (Compact Version) --- */}
+                <div className="flex items-center gap-3 bg-indigo-950/30 p-3 rounded-xl border border-indigo-500/20 mb-5 backdrop-blur-sm">
+                  <div className="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400 shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+                    <CheckCircle className="w-5 h-5" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-indigo-300 font-bold uppercase tracking-wider">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest mb-0.5">
                       Active Document
                     </p>
-                    <p className="text-white font-medium truncate">
+                    <p className="text-white font-medium truncate text-sm">
                       {getDisplayName(file?.name, user?.id)}
                     </p>
                   </div>
                   <button
                     onClick={() => setStep(1)}
-                    className="cursor-pointer text-xs text-slate-400 hover:text-white underline px-2"
+                    className=" cursor-pointer text-xs font-medium text-slate-400 hover:text-white hover:underline px-2 py-1 rounded hover:bg-white/5 transition-all"
                   >
                     Change
                   </button>
                 </div>
 
-                {/* Input */}
-                <div className="space-y-3 mb-8">
-                  <label className="text-sm font-medium text-slate-300 ml-1">
-                    Quiz Topic
-                  </label>
-                  <div className="relative">
-                    <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                    <input
-                      type="text"
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      placeholder="e.g. Chapter 1, Summary, or Specific Concept..."
-                      className="w-full bg-slate-950 border border-white/10 rounded-xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none text-white placeholder-slate-600 transition-all"
-                    />
+                {/* --- Configuration Card (Compact) --- */}
+                <div className="bg-slate-900/40 p-5 md:p-6 rounded-2xl border border-white/5 space-y-5 shadow-xl">
+                  {/* 1. Topic Input */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+                      Quiz Topic
+                    </label>
+                    <div className="relative group">
+                      <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                      <input
+                        type="text"
+                        value={topic}
+                        onChange={(e) => setTopic(e.target.value)}
+                        placeholder="e.g. Chapter 1, Summary..."
+                        className="w-full bg-slate-950 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none text-white placeholder-slate-600 transition-all shadow-inner"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Grid for Settings */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 2. Difficulty Selector */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+                        Difficulty
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={difficulty}
+                          onChange={(e) => setDifficulty(e.target.value)}
+                          className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm appearance-none outline-none focus:ring-2 focus:ring-indigo-500/50 text-white cursor-pointer shadow-inner transition-all"
+                        >
+                          <option value="Easy">Easy</option>
+                          <option value="Medium">Medium</option>
+                          <option value="Hard">Hard</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Question Count */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+                        Questions (5-12)
+                      </label>
+                      <input
+                        type="number"
+                        min="5"
+                        max="12"
+                        value={numQuestions}
+                        onChange={(e) =>
+                          setNumQuestions(parseInt(e.target.value))
+                        }
+                        onBlur={() => {
+                          if (numQuestions < 5) setNumQuestions(5);
+                          if (numQuestions > 12) setNumQuestions(12);
+                        }}
+                        className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 text-white placeholder-slate-600 shadow-inner transition-all appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <div className="pt-1">
+                    <button
+                      onClick={() => generateQuiz()}
+                      disabled={!topic || isLoading}
+                      className="cursor-pointer w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 hover:-translate-y-0.5 disabled:translate-y-0 disabled:bg-slate-800 disabled:text-slate-500 rounded-xl font-bold text-base shadow-[0_4px_20px_rgba(79,70,229,0.3)] hover:shadow-[0_6px_30px_rgba(79,70,229,0.5)] transition-all duration-200 flex items-center justify-center gap-2 disabled:shadow-none disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Brain className="w-4 h-4" /> Generate Quiz{" "}
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
-
-                {/* Action Button */}
-                <button
-                  onClick={() => generateQuiz()}
-                  disabled={!topic || isLoading}
-                  className="cursor-pointer w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 rounded-xl font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] transition-all flex items-center justify-center gap-3"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" /> Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Brain className="w-5 h-5" /> Generate Quiz{" "}
-                      <ArrowRight className="w-5 h-5" />
-                    </>
-                  )}
-                </button>
               </div>
             )}
 
