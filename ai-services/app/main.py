@@ -879,7 +879,7 @@ class PodcastRequest(BaseModel):
     user_id: str
 
 @app.post("/daily-podcast")
-async def get_daily_podcast(request: PodcastRequest):
+def get_daily_podcast(request: PodcastRequest):
     user_id = request.user_id
     print(f"\n--- Processing podcast request for: {user_id} ---")
  
