@@ -11,6 +11,7 @@ import {
   Clock,
   BookOpen,
   CalendarDays,
+  BrainCircuit,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
 
@@ -136,7 +137,7 @@ const pct = (score, total) =>
 export function isBetween10pmAnd12amLocal() {
   const now = new Date();
   const h = now.getHours();
-  return h >= 20 && h<24;
+  return h >= 20 && h < 24;
 }
 
 export default function TodaysHighlights({ results = [] }) {
@@ -209,17 +210,38 @@ export default function TodaysHighlights({ results = [] }) {
       {/* Content */}
       <div className="p-4 sm:p-5">
         {!stats ? (
-          <div className="py-8 flex flex-col items-center justify-center text-center border border-dashed border-white/10 rounded-xl bg-white/5">
-            <div className="p-2 bg-gray-800 rounded-full mb-2 text-gray-400">
-              <Clock className="w-5 h-5" />
+          <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/50 via-gray-900/30 to-indigo-900/20 p-6 text-center">
+            {/* Decorative Background Blur */}
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700" />
+
+            <div className="relative z-10 flex flex-col items-center">
+              {/* Icon with Ring Effect */}
+              <div className="relative mb-3">
+                <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-md animate-pulse" />
+                <div className="relative p-3 bg-gray-800/80 rounded-full border border-white/10 shadow-xl">
+                  <BrainCircuit className="w-6 h-6 text-indigo-400" />
+                </div>
+              </div>
+
+              <h3 className="text-white font-semibold text-sm tracking-wide">
+                Ready to Test Yourself?
+              </h3>
+
+              <p className="text-gray-400 text-[11px] mt-1 mb-4 max-w-[200px] leading-relaxed">
+                No quizzes taken today. Consistency is key to mastery!
+              </p>
+
+              <button
+                onClick={() => navigate("/quiz")}
+                className="cursor-pointer group/btn relative px-5 py-2 bg-white text-indigo-950 text-xs font-bold rounded-lg overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-200 via-white to-indigo-200 opacity-0 group-hover/btn:opacity-50 transition-opacity duration-500" />
+                <span className="relative flex items-center gap-2">
+                  Start Daily Quiz
+                  <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
+                </span>
+              </button>
             </div>
-            <h3 className="text-white font-medium text-xs">No quizzes today</h3>
-            <button
-              onClick={() => navigate("/quiz")}
-              className="cursor-pointer mt-3 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded-full transition-all flex items-center gap-1.5"
-            >
-              Start Quiz <ArrowRight className="w-3 h-3" />
-            </button>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
