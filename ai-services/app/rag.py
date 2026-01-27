@@ -17,7 +17,7 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 # embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 embeddings = HuggingFaceEndpointEmbeddings(
-    model="sentence-transformers/all-MiniLM-L6-v2",  # note: model, not model_name
+    model="BAAI/bge-small-en-v1.5",
     task="feature-extraction",
     huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"),
 )
