@@ -40,6 +40,7 @@ from app.services.vision_service import analyze_chat_image
 from app.supabase import supabase as db
 from app.services import groq_podcast as llm
 from app.services import azure_voice as tts
+from app.services.clean_tts import clean_text_for_xml
 
 app = FastAPI()
 
@@ -903,10 +904,16 @@ def get_daily_podcast(request: PodcastRequest):
 
     try: 
         print("  Generating script with Groq...")
-        script = llm.generate_podcast_script(mistakes)
-        print("   -> Script generated successfully.")
+        # 1. Assign to a temporary variable first
+        raw_script = llm.generate_podcast_script(mistakes)
+        
+        print("  Sanitizing script for Azure TTS...")
+        # 2. Clean it and assign to 'script' (so your downstream code works)
+        script = clean_text_for_xml(raw_script)
+        
+        # Now 'script' is defined and safe to use!
         print(f"   -> Script Preview: {script[:200]}...")
-         
+          
         print("Synthesizing audio with Azure...")
         audio_bytes = tts.synthesize_audio(script)
         print(f"   -> Audio synthesized ({len(audio_bytes)} bytes).")
