@@ -48,6 +48,8 @@ const QuizAssistant = ({ getToken, userId }) => {
   const [numQuestions, setNumQuestions] = useState(5);
   const [difficulty, setDifficulty] = useState("Medium");
 
+  const autoStartLock = useRef(false);
+
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
   const authFetch = async (url, options = {}) => {
@@ -157,16 +159,19 @@ const QuizAssistant = ({ getToken, userId }) => {
 
   //  GENERATE QUIZ
   const generateQuiz = async (overrideFile = null, overrideTopic = null) => {
+    // GUARD CLAUSE: Stop if already loading
+    if (isLoading) return;
+
     const activeFile = overrideFile || file;
     const activeTopic = overrideTopic || topic;
 
     if (!activeTopic || !activeFile) return;
 
     setIsLoading(true);
+
     try {
       const token = await getToken();
 
-      // CALL THE SHARED API SERVICE
       const data = await generateQuizApi(
         token,
         userId,
@@ -183,8 +188,15 @@ const QuizAssistant = ({ getToken, userId }) => {
       } else {
         alert("The AI couldn't find relevant info for this topic.");
       }
-    } catch (error) {
-      alert("Error generating quiz.");
+    } catch (error) { 
+      if (error.status === 429) {
+        alert(
+          "Daily limit reached! Please try the AI Tutor or come back tomorrow.",
+        );
+      } else {
+        console.error("Quiz Error:", error);
+        alert("Error generating quiz. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -192,9 +204,19 @@ const QuizAssistant = ({ getToken, userId }) => {
 
   useEffect(() => {
     const autoStart = async () => {
+      // Check if parameters AND if we haven't started yet
       if (location.state?.filename && location.state?.topic) {
+        // If we already started, STOP.
+        if (autoStartLock.current) {
+          console.log("Prevented double auto-start");
+          return;
+        }
+
+        // SET LOCK: Claim this run
+        autoStartLock.current = true;
+
         const { filename, topic } = location.state;
-        console.log("Auto-starting quiz for:", filename, topic);
+        console.log("🚀 Auto-starting quiz for:", filename, topic);
 
         // Update local state for context
         setFile({ name: filename });
@@ -202,8 +224,8 @@ const QuizAssistant = ({ getToken, userId }) => {
         setIsLoading(true);
 
         try {
-          // Call  generation logic directly here to ensure control flow
           const token = await getToken();
+          // Call the API
           const data = await generateQuizApi(token, userId, filename, topic);
 
           if (data.questions && data.questions.length > 0) {
@@ -215,18 +237,26 @@ const QuizAssistant = ({ getToken, userId }) => {
             setStep(2);
             setTakingQuiz(false);
           }
-        } catch (e) {
-          console.error(e);
+        } catch (e) { 
+          if (e.status === 429) {
+            alert(
+              "Daily limit reached! Please try the AI Tutor or come back tomorrow.",
+            );
+          } else {
+            console.error(e);
+          }
           setStep(2);
         } finally {
           setIsAutoStarting(false);
           setIsLoading(false);
+          // Clear history so refresh doesn't trigger it again
           window.history.replaceState({}, document.title);
         }
       }
     };
 
     autoStart();
+    // Keep dependencies simple. Do NOT add 'isLoading' here.
   }, [location.state]);
 
   const handleOptionSelect = (questionId, option) => {

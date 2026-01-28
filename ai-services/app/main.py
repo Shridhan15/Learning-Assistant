@@ -41,6 +41,7 @@ from app.supabase import supabase as db
 from app.services import groq_podcast as llm
 from app.services import azure_voice as tts
 from app.services.clean_tts import clean_text_for_xml
+from app.services.usage import check_and_increment
 
 app = FastAPI()
 
@@ -121,10 +122,11 @@ SKIP_RAG_KEYWORDS = {
 }
 
 @app.post("/chat")
-def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
+async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID required")
     
+    await check_and_increment(supabase, user_id, "tutor_chat", amount=1)
     print(f"DEBUG MODE CHECK: Socratic={request.is_socratic}, Feynman={request.is_feynman}")
     
     # Start with the plain text message
@@ -341,6 +343,7 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
     try:
         #  Create a Unique Filename
         # Replace spaces to avoid URL encoding issues
+        await check_and_increment(supabase, user_id, "upload", amount=1)
         clean_name = file.filename.replace(" ", "_")
         unique_filename = f"{user_id}_{clean_name}"
         
@@ -529,6 +532,7 @@ def clean_context_text(text: str) -> str:
 
 @app.post("/generate-quiz")
 async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
+    await check_and_increment(supabase, user_id, "quiz_questions", amount=req.num_questions)
     print(f"Generating {req.num_questions} questions ({req.difficulty}) for: {req.topic}")
     
     # Retrieve Context
@@ -657,6 +661,7 @@ class AssistantReply(BaseModel):
 
 @app.post("/coach")
 async def voice_coach(req: CoachRequest):
+    await check_and_increment(supabase, req.userId, "coach_chat", amount=1)
     try:
         try:
             results_response = supabase.table("quiz_results")\
