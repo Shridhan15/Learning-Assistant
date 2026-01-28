@@ -20,8 +20,7 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 MODEL_CACHE_DIR = os.path.join(os.getcwd(), "model_cache")
 
 print(f"Loading FastEmbed model from: {MODEL_CACHE_DIR}...")
-
-# Initialize with the explicit cache path
+ 
 embeddings = FastEmbedEmbeddings(
     model_name="BAAI/bge-small-en-v1.5",
     cache_path=MODEL_CACHE_DIR 
