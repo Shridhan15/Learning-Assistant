@@ -254,13 +254,16 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
     elif request.is_socratic:
         #  AI guides, doesn't tell (unless asked).
         system_instruction = (
-            "Role: Socratic Tutor. Goal: Guide user to the answer via questioning.\n"
-            "Rules:\n"
-            "1. Never answer directly. Ask guiding questions based on Context.\n"
-            "2. Break down complex concepts.\n"
-            "3. If wrong: Provide hint + simpler question.\n"
-            "4. EXIT STRATEGY: If user is frustrated, stuck, or asks for answer -> STOP Socratic mode. Provide full, simple explanation immediately."
-        )
+
+    "Role: Socratic Tutor. Goal: Guide user to the answer via questioning.\n"
+    "Rules:\n"
+    "1. ABSOLUTELY NO DIRECT ANSWERS. You must ask 1 short guiding question at a time.\n"
+    "2. WAIT for user input. Do not lecture. Do not reveal the full concept yet.\n"
+    "3. Keep responses BRIEF (2-3 sentences max). Force the user to think.\n"
+    "4. If user is wrong: Give a small hint + a simpler question.\n"
+    "5. EXIT STRATEGY: Only provide the full answer if the user explicitly gives up or asks for it."
+
+)
     else:
         if not context_text:
             # If no context (Greeting), just be a friendly assistant
@@ -739,14 +742,13 @@ class DeleteBookRequest(BaseModel):
 
 @app.post("/delete-book")
 async def delete_book(
-
     req: DeleteBookRequest, 
     user_id: str = Header(..., alias="user-id")
 ):
     print(f" Deleting book: {req.filename} for user: {user_id}")
 
     try:
-        # --- DELETE FROM PINECONE --- 
+        # 1. DELETE FROM PINECONE
         try:
             index = pc.Index(INDEX_NAME)
             index.delete(
@@ -755,48 +757,65 @@ async def delete_book(
                     "filename": req.filename
                 }
             )
-            print("Pinecone vectors deleted.")
+            print(" Pinecone vectors deleted.")
         except Exception as pinecone_error:
-            # Log but don't stop. If Pinecone is down, we still want to delete the file.
-            print(f"Pinecone delete failed: {pinecone_error}")
+            print(f" Pinecone delete failed: {pinecone_error}")
 
-        # ---  DELETE FROM STORAGE (Supabase Bucket) ---
+        # 2. DELETE FROM STORAGE
         supabase.storage.from_("pdfs").remove([req.filename])
         
-        #  Delete from documents
-        supabase.table("documents").delete().match({
-            "user_id": user_id,
-            "filename": req.filename
-        }).execute()
+        # 3. CLEAN UP DATABASE TABLES
 
-        # Delete from quiz_results
-        supabase.table("quiz_results").delete().match({
-            "user_id": user_id,
-            "filename": req.filename
-        }).execute()
-
-        # C. Delete from 'chat_history' (Attempting both formats)
-        supabase.table("chat_history").delete().match({
-            "user_id": user_id,
-            "filename": req.filename
-        }).execute()
+        quiz_response = supabase.table("quiz_results")\
+            .select("id")\
+            .match({"user_id": user_id, "filename": req.filename})\
+            .execute()
         
-        # Handle "short" filename variation in chat_history if necessary
+        # If quizzes exist, delete their related mistakes first
+        if quiz_response.data:
+            quiz_ids = [q['id'] for q in quiz_response.data]
+            print(f"   found {len(quiz_ids)} quizzes to clean up...")
+            
+            # Delete mistakes where 'quiz_result_id' matches our list
+            supabase.table("mistakes")\
+                .delete()\
+                .in_("quiz_result_id", quiz_ids)\
+                .execute()
+            print("   Dependent mistakes deleted.")
+        # Documents
+
+        supabase.table("documents").delete().match({"user_id": user_id, "filename": req.filename}).execute()
+        
+        # Quiz Results
+        supabase.table("quiz_results").delete().match({"user_id": user_id, "filename": req.filename}).execute()
+
+        # Chat History (Handle both filename variations)
+        supabase.table("chat_history").delete().match({"user_id": user_id, "filename": req.filename}).execute()
+        
+        # Handle "short" filename if prefix exists
         prefix = f"{user_id}_"
         if req.filename.startswith(prefix):
             short_filename = req.filename[len(prefix):]
-            supabase.table("chat_history").delete().match({
-                "user_id": user_id,
-                "filename": short_filename
-            }).execute()
+            supabase.table("chat_history").delete().match({"user_id": user_id, "filename": short_filename}).execute()
 
-        return {"message": "Book, vectors, and data deleted successfully"}
+        # --- 4. DECREMENT USAGE COUNTER (CRITICAL) ---
+        try:
+            row = supabase.table("user_usage").select("total_files_uploaded").eq("user_id", user_id).single().execute()
+            if row.data:
+                current_count = row.data.get("total_files_uploaded", 0)
+                if current_count > 0:
+                    supabase.table("user_usage").update({
+                        "total_files_uploaded": current_count - 1
+                    }).eq("user_id", user_id).execute()
+                    print(f"📉 Quota updated: {current_count} -> {current_count - 1}")
+        except Exception as usage_err:
+            print(f"⚠️ Usage update error: {usage_err}")
+
+        return {"message": "Book deleted and usage quota restored"}
     
-
     except Exception as e:
         print(f"❌ Error deleting book: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        raise HTTPException(status_code=500, detail=str(e)) 
 
 
 class CalendarEventCreate(BaseModel):

@@ -74,7 +74,7 @@ const Navbar = () => {
             {/* Mobile Menu Button */}
             <button
               onClick={toggleMenu}
-              className="md:hidden p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus:outline-none"
+              className="cursor-pointer md:hidden p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors focus:outline-none"
             >
               {isMobileMenuOpen ? (
                 <X className="w-6 h-6" />

@@ -121,7 +121,7 @@ const DailyPodcast = () => {
             <button
               onClick={handlePlay}
               disabled={!!statusMessage}
-              className={`w-full group/btn relative flex items-center justify-between px-6 py-4 rounded-xl font-bold transition-all duration-300 border ${
+              className={`cursor-pointer w-full group/btn relative flex items-center justify-between px-6 py-4 rounded-xl font-bold transition-all duration-300 border ${
                 statusMessage
                   ? "bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed"
                   : "bg-white border-white text-black hover:bg-gray-100 hover:scale-[1.02] shadow-[0_0_20px_rgba(255,255,255,0.15)]"
