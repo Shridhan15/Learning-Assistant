@@ -3,16 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import ResultsGrid from "../components/ResultsGrid";
 import { useUser } from "@clerk/clerk-react";
-
-import {
-  BookOpen,
-  Calendar,
-  Trophy,
-  ArrowRight,
-  Loader2,
-  BrainCircuit,
-  Sparkle,
-} from "lucide-react";
+ 
 import EmptyState from "../components/EmptyState";
 import PageLoading from "../components/PageLoading";
 import VoiceAssistant from "../components/VoiceAssistant";
@@ -20,6 +11,7 @@ import TodaysHighlights, {
   isBetween10pmAnd12amLocal,
 } from "../components/TodaysHighlights";
 import StudyCalendar from "../components/StudyCalendar/StudyCalendar";
+import UsageStats from "../components/UsageStats";
 
 const Home = () => {
   const { user, isLoaded } = useUser();
@@ -43,13 +35,13 @@ const Home = () => {
       });
       const data = await response.json();
 
-      const mappedEvents = data.events.map((ev) => ({ 
+      const mappedEvents = data.events.map((ev) => ({
         ...ev,
         id: ev.id,
         title: ev.title,
         start: ev.start_time,
         end: ev.end_time,
-        
+
         priority: ev.priority,
         category: ev.category,
       }));
@@ -59,7 +51,7 @@ const Home = () => {
       console.error("Error fetching events:", error);
     }
   };
- 
+
   const handleAddEvent = async (eventPayload) => {
     try {
       const token = await getToken();
@@ -73,7 +65,7 @@ const Home = () => {
         body: JSON.stringify(eventPayload),
       });
 
-      if (response.ok) { 
+      if (response.ok) {
         fetchCalendarEvents();
       }
     } catch (error) {
@@ -130,8 +122,7 @@ const Home = () => {
   const handleDeleteBook = async (filename) => {
     try {
       const token = await getToken();
-
-      // FIX 2: Use API_BASE_URL and add Headers
+ 
       const response = await fetch(`${API_BASE_URL}/delete-book`, {
         method: "POST",
         headers: {
@@ -158,59 +149,87 @@ const Home = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
+    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500 pb-10">
+      
       {showHighlights && allResults.length > 0 && (
-        <div className="space-y-4">
+        <section className="space-y-4">
           <div className="flex items-center gap-3">
+            <div className="h-8 w-1 bg-indigo-500 rounded-full"></div>{" "}
+            {/* Accent Bar */}
             <div>
-              <h3 className="text-3xl font-bold text-white">Daily Recap</h3>
-              <p className=" text-gray-400">
-                Your performance summary for today
+              <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                Daily Recap
+              </h3>
+              <p className="text-sm text-slate-400">
+                Your performance summary and key insights for today.
               </p>
             </div>
           </div>
           <TodaysHighlights results={allResults} />
-        </div>
+        </section>
       )}
  
-      <div className="space-y-1">
-        <div className="flex items-center gap-4">
+      <section>
+        {/* Section Header */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-              Study Schedule
-            </h1>
-            <p className="text-sm md:text-base text-slate-500 mt-1">
-              Plan your sessions. Stay consistent. Learn faster.
+            <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              Command Center
+            </h2>
+            <p className="text-slate-400 mt-1">
+              Manage your limits and schedule your success.
             </p>
           </div>
+ 
         </div>
 
-        <div className="h-[520px] md:h-[560px]">
-          <StudyCalendar events={calendarEvents} onAddEvent={handleAddEvent} />
+        {/* The Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full items-stretch">
+        
+          <div className="w-full lg:col-span-1 h-full"> 
+            <UsageStats
+              userId={userId}
+              getToken={getToken}
+              API_BASE_URL={API_BASE_URL}
+              className="h-full shadow-lg shadow-indigo-500/5"
+            />
+          </div>
+ 
+          <div className="w-full lg:col-span-2 h-full flex flex-col">
+            <div className="flex-1 min-h-[550px] bg-slate-900/50 border border-slate-800 rounded-xl p-1 shadow-lg shadow-indigo-500/5 overflow-hidden">
+              <StudyCalendar
+                events={calendarEvents}
+                onAddEvent={handleAddEvent}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+ 
 
-      {/* Progress Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Your Progress</h1>
-          <p className="text-gray-400 mt-1">
-            Track your performance and upcoming schedule
-          </p>
-        </div>
-      </div>
-
-      {/* Voice Assistant Section */}
       <VoiceAssistant userId={user.id} />
+ 
+      <section className="space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">
+              Study Materials & Progress
+            </h2>
+            <p className="text-sm text-slate-400 mt-1">
+              Access your uploaded documents and review quiz scores.
+            </p>
+          </div>
+          {/* Optional: 'Upload New' button could go here */}
+        </div>
 
-      {/* Library Results */}
-      <div className="space-y-4">
-        <ResultsGrid
-          groupedResults={groupedResults}
-          onDelete={handleDeleteBook}
-        />
-      </div>
+        <div className="min-h-[200px]">
+          {/* Pass a prop to ResultsGrid to handle empty states nicely */}
+          <ResultsGrid
+            groupedResults={groupedResults}
+            onDelete={handleDeleteBook}
+          />
+        </div>
+      </section>
     </div>
   );
 };

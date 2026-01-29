@@ -20,7 +20,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
     date: null,
     events: [],
   });
- 
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -39,7 +39,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
       start_time: "",
       end_time: "",
     });
- 
+
   const formatForInput = (isoStr) => {
     if (!isoStr) return "";
     const date = new Date(isoStr);
@@ -55,7 +55,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
         typeof eventStart === "string" ? eventStart : eventStart.toISOString();
       return eventDateStr.startsWith(arg.dateStr);
     });
- 
+
     const localStart = new Date(arg.date);
     localStart.setHours(9, 0, 0, 0);
     const localEnd = new Date(arg.date);
@@ -83,7 +83,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
   const handleSubmit = () => {
     if (!formData.title.trim() || !formData.start_time || !formData.end_time)
       return;
- 
+
     onAddEvent({
       title: formData.title.trim(),
       description: formData.description?.trim() || null,
@@ -99,13 +99,13 @@ const StudyCalendar = ({ events, onAddEvent }) => {
 
   const formattedEvents = useMemo(
     () =>
-      events.map((e) => ({ 
+      events.map((e) => ({
         id: e.id,
         title: e.title,
         start: e.start_time || e.start,
         end: e.end_time || e.end,
- 
-        priority: Number(e.priority),  
+
+        priority: Number(e.priority),
         category: e.category,
         description: e.description,
 
@@ -179,11 +179,12 @@ const StudyCalendar = ({ events, onAddEvent }) => {
               {/* Right */}
               <button
                 onClick={() => setModalOpen(true)}
-                className="group inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 font-extrabold text-white
-                     bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg
-                     hover:shadow-xl hover:brightness-110 transition-all duration-200"
+                className="cursor-pointer group inline-flex items-center justify-center gap-1 rounded-2xl 
+             px-3 py-2 text-sm md:text-base font-bold text-white
+             bg-linear-to-r from-indigo-600 to-purple-600 shadow-lg
+             hover:shadow-xl hover:brightness-110 transition-all duration-200"
               >
-                <Plus className="w-5 h-5 group-hover:rotate-12 transition-transform duration-200" />
+                <Plus className="w-4 h-4 md:w-5 md:h-5 transition-transform duration-200" />
                 New Event
               </button>
             </div>
@@ -237,7 +238,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
                   setModalOpen(false);
                   resetForm();
                 }}
-                className="p-2 rounded-2xl bg-white/15 hover:bg-white/25 transition"
+                className=" cursor-pointer p-2 rounded-2xl bg-white/15 hover:bg-white/25 transition"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
@@ -293,7 +294,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
                             {/* Delete button */}
                             <button
                               onClick={() => onDeleteEvent(ev.id)}
-                              className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                              className=" cursor-pointer opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                               aria-label="Delete event"
                             >
                               <X className="w-4 h-4" />
@@ -419,7 +420,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
                           onClick={() =>
                             setFormData({ ...formData, category: cat.id })
                           }
-                          className={`px-4 py-2 rounded-2xl border text-sm font-extrabold transition-all ${
+                          className={`cursor-pointer px-4 py-2 rounded-2xl border text-sm font-extrabold transition-all ${
                             formData.category === cat.id
                               ? `bg-gradient-to-r ${cat.color} text-white border-transparent shadow-md`
                               : "bg-white border-slate-200 text-slate-500 hover:border-indigo-200 hover:bg-indigo-50/50"
@@ -445,7 +446,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
                           onClick={() =>
                             setFormData({ ...formData, priority: prio.id })
                           }
-                          className={`flex-1 px-3 py-2 rounded-2xl border text-sm font-extrabold transition-all ${
+                          className={`cursor-pointer flex-1 px-3 py-2 rounded-2xl border text-sm font-extrabold transition-all ${
                             formData.priority === prio.id
                               ? prio.color + " border-transparent shadow-md"
                               : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
@@ -467,7 +468,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
                   setModalOpen(false);
                   resetForm();
                 }}
-                className="px-5 py-2.5 text-slate-600 font-extrabold hover:bg-slate-200/60 rounded-2xl transition"
+                className="cursor-pointer px-5 py-2.5 text-slate-600 font-extrabold hover:bg-slate-200/60 rounded-2xl transition"
               >
                 Cancel
               </button>
@@ -477,7 +478,7 @@ const StudyCalendar = ({ events, onAddEvent }) => {
                 disabled={
                   !formData.title || !formData.start_time || !formData.end_time
                 }
-                className="px-6 py-2.5 rounded-2xl font-extrabold text-white
+                className=" cursor-pointer px-6 py-2.5 rounded-2xl font-extrabold text-white
                          bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg
                          disabled:opacity-50 disabled:cursor-not-allowed
                          hover:shadow-xl hover:brightness-110 transition-all"
