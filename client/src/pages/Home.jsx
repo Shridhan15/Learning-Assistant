@@ -3,7 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import ResultsGrid from "../components/ResultsGrid";
 import { useUser } from "@clerk/clerk-react";
- 
+
 import EmptyState from "../components/EmptyState";
 import PageLoading from "../components/PageLoading";
 import VoiceAssistant from "../components/VoiceAssistant";
@@ -15,6 +15,7 @@ import UsageStats from "../components/UsageStats";
 
 const Home = () => {
   const { user, isLoaded } = useUser();
+  const [files, setFiles] = useState([]);
   const { getToken, userId } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -41,7 +42,6 @@ const Home = () => {
         title: ev.title,
         start: ev.start_time,
         end: ev.end_time,
-
         priority: ev.priority,
         category: ev.category,
       }));
@@ -49,6 +49,45 @@ const Home = () => {
       setCalendarEvents(mappedEvents);
     } catch (error) {
       console.error("Error fetching events:", error);
+    }
+  };
+
+  const fetchResults = async () => {
+    console.log("STARTING result FETCH...");
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_BASE_URL}/results`, {
+        headers: { Authorization: `Bearer ${token}`, "user-id": userId },
+      });
+      const data = await response.json();
+      const grouped = data.results.reduce((acc, item) => {
+        if (!acc[item.filename]) acc[item.filename] = [];
+        acc[item.filename].push(item);
+        return acc;
+      }, {});
+      setGroupedResults(grouped);
+    } catch (error) {
+      console.error("Error loading results:", error);
+    }
+  };
+
+  const fetchFiles = async () => {
+    console.log("STARTING FILE FETCH...");
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_BASE_URL}/files`, {
+        headers: { Authorization: `Bearer ${token}`, "user-id": userId },
+      });
+
+      const data = await response.json();
+
+      console.log("Raw Backend Response:", data);
+
+      const fileList = Array.isArray(data) ? data : data.files || [];
+
+      setFiles(fileList);
+    } catch (error) {
+      console.error("Error fetching files:", error);
     }
   };
 
@@ -74,55 +113,41 @@ const Home = () => {
   };
 
   useEffect(() => {
-    if (userId) fetchCalendarEvents();
-  }, [userId]);
+    const loadAllData = async () => {
+      if (!userId) return;
 
-  const fetchResults = async () => {
-    try {
-      const token = await getToken();
+      setLoading(true);
+      try {
+        // Run all fetches in parallel
+        await Promise.all([
+          fetchResults(),
+          fetchCalendarEvents(),
+          fetchFiles(),
+        ]);
+      } catch (error) {
+        console.error("Error fetching initial data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      const response = await fetch(`${API_BASE_URL}/results`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "user-id": userId,
-        },
-      });
-      const data = await response.json();
+    loadAllData();
+  }, [userId]); 
 
-      const grouped = data.results.reduce((acc, item) => {
-        if (!acc[item.filename]) {
-          acc[item.filename] = [];
-        }
-        acc[item.filename].push(item);
-        return acc;
-      }, {});
-
-      setGroupedResults(grouped);
-    } catch (error) {
-      console.error("Error loading home:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchResults();
-    fetchCalendarEvents();
-  }, []);
+ 
   if (loading) {
     return <PageLoading />;
   }
 
-  if (Object.keys(groupedResults).length === 0) {
+  if (files.length === 0) {
     return <EmptyState />;
   }
-
   const allResults = Object.values(groupedResults).flat();
 
   const handleDeleteBook = async (filename) => {
     try {
       const token = await getToken();
- 
+
       const response = await fetch(`${API_BASE_URL}/delete-book`, {
         method: "POST",
         headers: {
@@ -150,7 +175,6 @@ const Home = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500 pb-10">
-      
       {showHighlights && allResults.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center gap-3">
@@ -168,7 +192,7 @@ const Home = () => {
           <TodaysHighlights results={allResults} />
         </section>
       )}
- 
+
       <section>
         {/* Section Header */}
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -180,13 +204,11 @@ const Home = () => {
               Manage your limits and schedule your success.
             </p>
           </div>
- 
         </div>
 
         {/* The Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full items-stretch">
-        
-          <div className="w-full lg:col-span-1 h-full"> 
+          <div className="w-full lg:col-span-1 h-full">
             <UsageStats
               userId={userId}
               getToken={getToken}
@@ -194,7 +216,7 @@ const Home = () => {
               className="h-full shadow-lg shadow-indigo-500/5"
             />
           </div>
- 
+
           <div className="w-full lg:col-span-2 h-full flex flex-col">
             <div className="flex-1 min-h-[550px] bg-slate-900/50 border border-slate-800 rounded-xl p-1 shadow-lg shadow-indigo-500/5 overflow-hidden">
               <StudyCalendar
@@ -205,10 +227,9 @@ const Home = () => {
           </div>
         </div>
       </section>
- 
 
       <VoiceAssistant userId={user.id} />
- 
+
       <section className="space-y-6">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
