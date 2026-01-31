@@ -5,8 +5,8 @@ from pinecone import Pinecone, ServerlessSpec
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
-from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings  
+from langchain_openai import AzureOpenAIEmbeddings
 load_dotenv()
  
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
@@ -17,13 +17,13 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
  
 # embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-MODEL_CACHE_DIR = os.path.join(os.getcwd(), "model_cache")
+print("Connecting to Azure OpenAI Embeddings...")
 
-print(f"Loading FastEmbed model from: {MODEL_CACHE_DIR}...")
- 
-embeddings = FastEmbedEmbeddings(
-    model_name="BAAI/bge-small-en-v1.5",
-    cache_path=MODEL_CACHE_DIR 
+embeddings = AzureOpenAIEmbeddings(
+    azure_deployment=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT"),  # matches 'text-embedding-3-small'
+    openai_api_version=os.getenv("OPENAI_API_VERSION"),               # matches '2024-12-01-preview'
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),                # matches 'https://zaidoc...'
+    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
 )
 
 def load_pdf(file_path):
