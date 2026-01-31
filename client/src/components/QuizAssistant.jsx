@@ -188,7 +188,7 @@ const QuizAssistant = ({ getToken, userId }) => {
       } else {
         alert("The AI couldn't find relevant info for this topic.");
       }
-    } catch (error) { 
+    } catch (error) {
       if (error.status === 429) {
         alert(
           "Daily limit reached! Please try the AI Tutor or come back tomorrow.",
@@ -237,7 +237,7 @@ const QuizAssistant = ({ getToken, userId }) => {
             setStep(2);
             setTakingQuiz(false);
           }
-        } catch (e) { 
+        } catch (e) {
           if (e.status === 429) {
             alert(
               "Daily limit reached! Please try the AI Tutor or come back tomorrow.",
