@@ -12,6 +12,7 @@ import Hero from "./components/Hero";
 import Footer from "./components/Footer";
 import Studio from "./pages/Studio";
 import ConceptTest from "./pages/ConceptTest";
+import ConceptSession from "./pages/ConceptSession";
 
 const ProtectedLayout = ({ children }) => {
   const { getToken, userId, isLoaded } = useAuth();
@@ -125,6 +126,21 @@ const App = () => {
             <SignedIn>
               <ProtectedLayout>
                 <ConceptTest />
+              </ProtectedLayout>
+            </SignedIn>
+            <SignedOut>
+              <Navigate to="/" replace />
+            </SignedOut>
+          </>
+        }
+      />
+      <Route
+        path="/concept-test/session"
+        element={
+          <>
+            <SignedIn>
+              <ProtectedLayout>
+                <ConceptSession />
               </ProtectedLayout>
             </SignedIn>
             <SignedOut>

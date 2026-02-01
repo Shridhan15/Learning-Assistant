@@ -160,7 +160,7 @@ const ConceptTest = () => {
           <div className="p-4 border-t border-white/5 text-center">
             <p className="text-[10px] text-slate-600">
               {availableFiles.length} Document
-              {availableFiles.length !== 1&& "s"} Available
+              {availableFiles.length !== 1 && "s"} Available
             </p>
           </div>
         </div>
