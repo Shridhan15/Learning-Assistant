@@ -1,11 +1,13 @@
 import os
 import json
+from urllib import response
 import instructor
+import asyncio
 from fastapi import HTTPException
 import traceback
 import time
 import pytz
-
+import requests
 import shutil
 import string
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header,WebSocket, WebSocketDisconnect
@@ -14,6 +16,7 @@ from pydantic import BaseModel,Field,validator
 from dotenv import load_dotenv
 from groq import Groq
 from langchain_groq import ChatGroq
+from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import List, Optional,Literal
@@ -123,6 +126,42 @@ SKIP_RAG_KEYWORDS = {
     "bye", "byee", "goodbye", "cya", "see ya","see you",'good morning', "good night", "gn"
 }
 
+
+
+@tool
+def fetch_educational_diagram(search_query: str) -> str:
+    """
+    Fetches a high-quality educational diagram or visual aid from the internet.
+    Use this ONLY when the explanation requires a visual (e.g., anatomy, processes, 
+    flowcharts, or maps). Input should be a specific search query.
+    """
+    api_key = os.getenv("GOOGLE_API_KEY")
+    cx = "d28942ef5ecd64218" # Your CX ID from the snippet
+    print("API KEY:", api_key)
+
+    
+    url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        "q": f"{search_query} educational diagram",
+        "cx": cx,
+        "key": api_key,
+        "searchType": "image",
+        "num": 1,
+        "safe": "active"
+    }
+    
+    try:
+        response = requests.get(url, params=params)
+        data = response.json()
+        if "error" in data:
+            print(f"Google API Error: {data['error']['message']}") # This will tell you if it's a key/quota issue
+        if "items" in data:
+            return data["items"][0]["link"]
+    except Exception as e:
+        print(f"Search error: {e}")
+
+
+    
 @app.post("/chat")
 async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     if not user_id:
@@ -276,19 +315,37 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
                     "If context lacks the answer, say you don't know."
             )
 
+    tools = [fetch_educational_diagram]
+    model_with_tools = chat_model.bind_tools(tools)
+
+    visual_instruction = (
+    "\n\nVISUAL AID POLICY: If a concept is highly visual (like a biological process, "
+    "technical architecture, or geometry), call the 'fetch_educational_diagram' tool. "
+    "Do not use it for simple text definitions."
+)
+    system_instruction += visual_instruction
+
     answer_prompt = ChatPromptTemplate.from_messages([
-        ("system", system_instruction + "\n\nContext:\n{context}"),
+        ("system", system_instruction  + "\n\nContext:\n{context}"),
         MessagesPlaceholder(variable_name="chat_history"),
         ("user", "{input}")
     ])
     
-    chain = answer_prompt | chat_model
+    chain = answer_prompt | model_with_tools
     
     response = chain.invoke({
         "context": context_text,
         "chat_history": chat_history[:-1],  
         "input": effective_message
     })
+
+    final_image_url = None
+    if response.tool_calls:
+        for tool_call in response.tool_calls:
+            if tool_call["name"] == "fetch_educational_diagram":
+                # This executes the actual search
+                final_image_url = fetch_educational_diagram.invoke(tool_call["args"]["search_query"])
+    
  
     try:
         supabase.table("chat_history").insert({
@@ -300,7 +357,13 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
     except Exception as e:
         print(f"Error saving AI message: {e}")
 
-    return {"response": response.content}
+    print(f"AI Response: {response.content[:60]}...")
+    print(f"Image URL: {final_image_url}")
+
+    return {
+    "response": response.content,
+    "image_url": final_image_url 
+}
 
  
 @app.get("/files")
@@ -537,112 +600,120 @@ def clean_context_text(text: str) -> str:
 async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
     await check_and_increment(user_id, "quiz_questions", amount=req.num_questions)
     print(f"Generating {req.num_questions} questions ({req.difficulty}) for: {req.topic}")
-    
+
     # Retrieve Context
     retrieved_chunks = retrieve(req.topic, req.filename, user_id)
-    
     if not retrieved_chunks:
         return {"questions": []}
-    
+
     raw_context = "\n".join(retrieved_chunks)
     clean_context = clean_context_text(raw_context)
 
+    # ---------------- DIFFICULTY RULES ---------------- #
+
     difficulty_instructions = {
-    "Easy": (
-        "EASY MODE (Recall Only):\n"
-        "- Ask ONLY direct factual recall questions from the text.\n"
-        "- Allowed forms: What / Who / When / Where / Define.\n"
-        "- MUST be answerable from ONE explicit line in the text.\n"
-        "- NO why/how, NO scenario, NO interpretation, NO multi-step logic.\n"
-        "- Distractors must be clearly wrong but related (same topic family)."
-    ),
-    "Medium": (
-        "MEDIUM MODE (Understanding Only):\n"
-        "- Ask ONLY understanding-based questions (How/Why/Meaning).\n"
-        "- Require interpreting cause-effect, process, or concept meaning from the text.\n"
-        "- MUST still be single-hop reasoning (1-step thinking).\n"
-        "- NO scenario, NO case study, NO prediction, NO multi-hop.\n"
-        "- Distractors must be plausible misconceptions."
-    ),
-    "Hard": (
-        "HARD MODE (Scenario + Multi-hop ONLY):\n"
-        "- NEVER ask direct recall questions.\n"
-        "- EVERY question MUST be scenario-based (use: Suppose/Imagine/If/A system...).\n"
-        "- EVERY question MUST require multi-hop reasoning by combining >=2 distinct facts "
-        "from different parts of the text.\n"
-        "- Ask for best outcome/most appropriate action/predicted result based on scenario.\n"
-        "- Distractors must be highly plausible and partially correct but wrong on a nuance.\n"
-        "- If the answer is directly stated in one sentence, REWRITE the question."
+        "Easy": (
+            "EASY MODE (Atomic Recall Only):\n"
+            "- Each question MUST map to exactly ONE sentence or definition in the text.\n"
+            "- Allowed forms ONLY: What / Who / When / Where / Define.\n"
+            "- NO paraphrasing, NO inference, NO combining facts.\n"
+            "- If removing the source sentence makes the question unanswerable, it is INVALID.\n"
+            "- Each question must test a DIFFERENT fact.\n"
+            "- Distractors must be same-domain but clearly incorrect."
+        ),
+
+        "Medium": (
+            "MEDIUM MODE (Single-Concept Understanding):\n"
+            "- Each question MUST transform ONE concept from the text.\n"
+            "- Allowed reasoning: explanation, cause-effect, or meaning.\n"
+            "- MUST rely on ONE concept only.\n"
+            "- If answer can be copied verbatim from the text, it is INVALID.\n"
+            "- NO scenarios, NO real-world cases.\n"
+            "- Distractors must be realistic misunderstandings of the SAME concept."
+        ),
+
+        "Hard": (
+            "HARD MODE (Verified Multi-Hop Reasoning ONLY):\n"
+            "- EACH question MUST combine TWO DISTINCT concepts from DIFFERENT parts of the text.\n"
+            "- Required reasoning pattern: Concept A + Concept B → Inference.\n"
+            "- If the question can be answered using only ONE concept, it is INVALID.\n"
+            "- Questions MUST be scenario-based and require prediction or decision.\n"
+            "- Ask ONLY for BEST / MOST APPROPRIATE / MOST LIKELY outcome.\n"
+            "- NO definitions, NO explanations, NO direct restatement of text.\n"
+            "- Each question must test a UNIQUE pair of concepts.\n"
+            "- Distractors must be partially correct but fail due to ONE missing inference."
+        )
+    }
+
+    difficulty_key = req.difficulty.strip().capitalize()
+    selected_difficulty_prompt = difficulty_instructions.get(
+        difficulty_key, difficulty_instructions["Medium"]
     )
-}
 
-    selected_difficulty_prompt = difficulty_instructions.get(req.difficulty, difficulty_instructions["Medium"])
+    # Debug (optional but recommended)
+    print("Difficulty key used:", difficulty_key)
 
-    
+    # ---------------- LLM CALL ---------------- #
 
-    #  Call Groq with Pydantic Validation
-    try: 
+    try:
         quiz_data = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             max_retries=3,
-            response_model=QuizResponse,  
+            temperature=0.3,
+            response_model=QuizResponse,
             messages=[
-    {
-        "role": "system", 
-        "content": f"""
-        You are an expert psychometrician and assessment specialist. Your goal is to generate a {req.num_questions}-question multiple-choice quiz that strictly adheres to the requested difficulty level.
+                {
+                    "role": "system",
+                    "content": f"""
+You are an expert psychometrician and assessment specialist.
 
-        CONTEXT ANALYSIS:
-        1. Analyze the provided text.
-        2. Identify the core concepts, not just keywords.
-        3. Generate a summary (context_summary) that captures the nuance required for the questions.
+Your task is to generate a {req.num_questions}-question multiple-choice quiz
+that STRICTLY follows the requested difficulty rules.
 
-        STRICT DIFFICULTY ENFORCEMENT: {req.difficulty.upper()}
-        {selected_difficulty_prompt}
+STRICT DIFFICULTY ENFORCEMENT: {difficulty_key}
+{selected_difficulty_prompt}
 
-        CRITICAL QUESTION DESIGN RULES:
-        1. **One Clear Truth:** Ensure exactly one option is indisputably correct based *only* on the text.
-        2. **No "All of the above":** Do not use "All of the above" or "None of the above" as options.
-        3. **Distractor Quality:** - For Hard/Medium: Distractors must be conceptually related (e.g., if the answer is a specific protein, distractors should be other proteins mentioned in the text, not random words).
-           - Avoid negative framing (e.g., "Which is NOT") unless absolutely necessary.
-        4. **Independence:** The answer to one question should not reveal the answer to another.
-        NON-NEGOTIABLE RULES:
+REASONING CONTRACT (MANDATORY):
+- Easy → one sentence → one question
+- Medium → one concept → one transformation
+- Hard → Concept A + Concept B → inference
+If this structure cannot be met, DO NOT generate the question.
+
+CRITICAL QUESTION DESIGN RULES:
 1) SOURCE TEXT ONLY (no outside knowledge).
 2) Exactly ONE correct option (A–D).
 3) Exactly 4 options. No All/None.
-4) No negative framing (NOT/EXCEPT).
+4) No negative framing (NOT / EXCEPT).
 5) Questions must be independent.
 6) Distractors must be concept-related.
-        
-        EXCLUSIONS:
-        Ignore sections labeled "Exercises", "Glossary", "References", or "About the Author".
 
-        OUTPUT FORMAT:
-        Call the 'QuizResponse' tool immediately.
-        """
-    },
-    {
-        "role": "user", 
-        "content": f"""
-        Generate the quiz based on this text:
+EXCLUSIONS:
+Ignore sections titled Exercises, Glossary, References, About the Author.
 
-        ----- BEGIN SOURCE TEXT -----
-        {clean_context}
-        ----- END SOURCE TEXT -----
+OUTPUT FORMAT:
+Return ONLY a valid QuizResponse object.
+"""
+                },
+                {
+                    "role": "user",
+                    "content": f"""
+Generate the quiz using ONLY the text below.
 
-        Topic: {req.topic}
-        """
-    }
-],
-            temperature=0.3,  
+----- BEGIN SOURCE TEXT -----
+{clean_context}
+----- END SOURCE TEXT -----
+
+Topic: {req.topic}
+"""
+                }
+            ],
         )
- 
         return quiz_data.model_dump()
 
     except Exception as e:
         print(f"Error calling Groq: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate quiz")
-    
+  
     
 
  
