@@ -47,6 +47,7 @@ from app.services import azure_voice as tts
 from app.services.clean_tts import clean_text_for_xml
 from app.services.usage_service import check_and_increment
 from app.routers import usage 
+from app.routers.chat import router as summary_router
 
 app = FastAPI()
 
@@ -980,3 +981,5 @@ def get_daily_podcast(request: PodcastRequest):
 
 
 app.include_router(usage.router, prefix="/api", tags=["Usage"]) 
+app.include_router(summary_router)
+

@@ -750,6 +750,8 @@ const Tutor = () => {
         open={showSummaryGate}
         pendingRoute={pendingRoute}
         onClose={() => setShowSummaryGate(false)}
+        API_BASE_URL={API_BASE_URL}
+        sessionMsgs={sessionMsgs}
       />
     </div>
   );
