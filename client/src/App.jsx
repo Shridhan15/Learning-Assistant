@@ -122,7 +122,7 @@ const App = () => {
           </>
         }
       />
-      <Route
+      {/* <Route
         path="/concept-test"
         element={
           <>
@@ -136,7 +136,7 @@ const App = () => {
             </SignedOut>
           </>
         }
-      />
+      /> */}
       <Route
         path="/concept-test/session"
         element={

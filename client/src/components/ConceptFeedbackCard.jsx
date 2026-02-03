@@ -8,9 +8,9 @@ import {
 } from "lucide-react";
 
 const ConceptFeedbackCard = ({
-  feedbackData, // The object returned from backend { score, feedback_text, missing_concepts }
-  rubric, // The hidden rubric for this question (to show them what was expected)
-  onNext, // Function to go to next question
+  feedbackData, 
+  rubric, 
+  onNext, 
   isLastQuestion,
 }) => {
   if (!feedbackData) return null;

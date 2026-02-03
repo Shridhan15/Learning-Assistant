@@ -20,9 +20,9 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 print("Connecting to Azure OpenAI Embeddings...")
 
 embeddings = AzureOpenAIEmbeddings(
-    azure_deployment=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT"),  # matches 'text-embedding-3-small'
-    openai_api_version=os.getenv("OPENAI_API_VERSION"),               # matches '2024-12-01-preview'
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),                # matches 'https://zaidoc...'
+    azure_deployment=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT"),  
+    openai_api_version=os.getenv("OPENAI_API_VERSION"),               
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),                 
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
 )
 
@@ -46,9 +46,7 @@ async def store_in_pinecone(chunks, filename, user_id, progress_callback=None):
     total_chunks = len(chunks)
     
     print(f"Starting batch embedding for {total_chunks} chunks...")
-
-    # --- BATCH EMBEDDING SETTINGS ---
-    # Hugging Face Free Tier usually handles ~32 texts per request reliably.
+ 
     BATCH_SIZE = 32 
     
     # 1. Process chunks in batches

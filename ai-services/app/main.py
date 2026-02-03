@@ -272,14 +272,14 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
             "5. EXIT STRATEGY: If the user is stuck, frustrated, or explicitly asks for the answer, provide the full explanation immediately."
         )
     else:
-        if not context_text:
-            # If no context (Greeting), just be a friendly assistant
+        if not context_text: 
             system_instruction = "You are a helpful AI Tutor. Respond politely to the user and in Short"
 
         else:
             system_instruction = (
                     "You are an AI tutor. Answer ONLY from the context. "
                     "Explain simply, like a teacher, in short answers. "
+                    "Maintain a friendly tone. not like a robot, user should feel the conversation interesting"
                     "If context lacks the answer, say you don't know."
             )
   
@@ -628,8 +628,9 @@ STRICT DIFFICULTY ENFORCEMENT: {difficulty_key}
 
 REASONING CONTRACT (MANDATORY):
 - Easy → one sentence → one question
-- Medium → one concept → one transformation
-- Hard → Concept A + Concept B → inference
+- Medium → one concept → one transformation, make sure elimination of options is not easy
+- Hard → Concept A + Concept B → inference, make each options look like a possible right answer, but there should be only one correct answer
+
 If this structure cannot be met, DO NOT generate the question.
 
 CRITICAL QUESTION DESIGN RULES:
