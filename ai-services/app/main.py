@@ -127,40 +127,7 @@ SKIP_RAG_KEYWORDS = {
 }
 
 
-
-@tool
-def fetch_educational_diagram(search_query: str) -> str:
-    """
-    Fetches a high-quality educational diagram or visual aid from the internet.
-    Use this ONLY when the explanation requires a visual (e.g., anatomy, processes, 
-    flowcharts, or maps). Input should be a specific search query.
-    """
-    api_key = os.getenv("GOOGLE_API_KEY")
-    cx = "d28942ef5ecd64218" # Your CX ID from the snippet
-    print("API KEY:", api_key)
-
-    
-    url = "https://www.googleapis.com/customsearch/v1"
-    params = {
-        "q": f"{search_query} educational diagram",
-        "cx": cx,
-        "key": api_key,
-        "searchType": "image",
-        "num": 1,
-        "safe": "active"
-    }
-    
-    try:
-        response = requests.get(url, params=params)
-        data = response.json()
-        if "error" in data:
-            print(f"Google API Error: {data['error']['message']}") # This will tell you if it's a key/quota issue
-        if "items" in data:
-            return data["items"][0]["link"]
-    except Exception as e:
-        print(f"Search error: {e}")
-
-
+ 
     
 @app.post("/chat")
 async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
@@ -314,16 +281,9 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
                     "Explain simply, like a teacher, in short answers. "
                     "If context lacks the answer, say you don't know."
             )
+  
 
-    tools = [fetch_educational_diagram]
-    model_with_tools = chat_model.bind_tools(tools)
-
-    visual_instruction = (
-    "\n\nVISUAL AID POLICY: If a concept is highly visual (like a biological process, "
-    "technical architecture, or geometry), call the 'fetch_educational_diagram' tool. "
-    "Do not use it for simple text definitions."
-)
-    system_instruction += visual_instruction
+      
 
     answer_prompt = ChatPromptTemplate.from_messages([
         ("system", system_instruction  + "\n\nContext:\n{context}"),
@@ -331,7 +291,7 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
         ("user", "{input}")
     ])
     
-    chain = answer_prompt | model_with_tools
+    chain = answer_prompt | chat_model
     
     response = chain.invoke({
         "context": context_text,
@@ -339,13 +299,7 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
         "input": effective_message
     })
 
-    final_image_url = None
-    if response.tool_calls:
-        for tool_call in response.tool_calls:
-            if tool_call["name"] == "fetch_educational_diagram":
-                # This executes the actual search
-                final_image_url = fetch_educational_diagram.invoke(tool_call["args"]["search_query"])
-    
+  
  
     try:
         supabase.table("chat_history").insert({
@@ -357,12 +311,10 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
     except Exception as e:
         print(f"Error saving AI message: {e}")
 
-    print(f"AI Response: {response.content[:60]}...")
-    print(f"Image URL: {final_image_url}")
+    print(f"AI Response: {response.content[:60]}...") 
 
     return {
-    "response": response.content,
-    "image_url": final_image_url 
+    "response": response.content, 
 }
 
  

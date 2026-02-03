@@ -38,6 +38,7 @@ const Tutor = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSocratic, setIsSocratic] = useState(false);
   const [isFeynman, setIsFeynman] = useState(false);
+  const [sessionMsgs, setSessionMsgs] = useState([]);
 
   // --- STATE SPLIT ---
   const [loading, setLoading] = useState(false);
@@ -148,26 +149,41 @@ const Tutor = () => {
   const handleSend = async (e) => {
     e.preventDefault();
 
-    // Allow sending if there is text OR an image
     if ((!input.trim() && !selectedImage) || !selectedFile) return;
 
-    const userMessage = input;
+    const userText = input.trim();
     const imageToSend = selectedImage;
 
-    // Clear inputs immediately for better UX
     setInput("");
     clearImage();
 
-    // Add to UI immediately (Optimistic Update)
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "user",
-        content: userMessage,
-        image: imagePreview, //  preview URL to show in chat history
-        isNew: true,
-      },
-    ]);
+    // ---- USER MESSAGE OBJECTS ----
+
+    // UI message  
+    const uiUserMsg = {
+      role: "user",
+      content: userText,
+      image: imagePreview,
+      isNew: true,
+    };
+
+    // SESSION message  
+    const sessionUserMsg = {
+      role: "user",
+      content: userText,
+      timestamp: Date.now(),
+    };
+
+    // 1️ Update UI
+    setMessages((prev) =>
+      prev.map((m) => ({ ...m, isNew: false })).concat(uiUserMsg),
+    );
+
+    // 2️ Update SESSION
+    if (userText) {
+      setSessionMsgs((prev) => [...prev, sessionUserMsg]);
+    }
+
     setLoading(true);
 
     try {
@@ -180,9 +196,9 @@ const Tutor = () => {
           "user-id": userId,
         },
         body: JSON.stringify({
-          message: userMessage,
+          message: userText,
           filename: selectedFile,
-          image: imageToSend, //  Sending Base64 here
+          image: imageToSend,
           is_socratic: isSocratic,
           is_feynman: isFeynman,
         }),
@@ -190,28 +206,48 @@ const Tutor = () => {
 
       const data = await response.json();
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: data.response,
-          isNew: true,
-        },
-      ]);
+      // ---- AI MESSAGE OBJECTS ----
+
+      const uiAiMsg = {
+        role: "assistant",
+        content: data.response,
+        isNew: true,
+      };
+
+      const sessionAiMsg = {
+        role: "assistant",
+        content: data.response,
+        timestamp: Date.now(),
+      };
+
+      // 3️Update UI
+      setMessages((prev) => [...prev, uiAiMsg]);
+
+      // 4️ Update SESSION (TEXT ONLY)
+      setSessionMsgs((prev) => [...prev, sessionAiMsg]);
     } catch (error) {
       console.error(error);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Error connecting to AI Tutor." },
-      ]);
+
+      const errorMsg = {
+        role: "assistant",
+        content: "Error connecting to AI Tutor.",
+        timestamp: Date.now(),
+      };
+
+      setMessages((prev) => [...prev, errorMsg]);
+      setSessionMsgs((prev) => [...prev, errorMsg]); 
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+  console.log("Session Messages Updated:", sessionMsgs);
+}, [sessionMsgs]);
+
+
   const cleanMessage = (content) => {
-    if (!content) return "";
-    // Removes everything inside [CONTEXT ... ] tags
+    if (!content) return ""; 
     return content
       .replace(/\[CONTEXT FROM UPLOADED IMAGE:[\s\S]*?\]/g, "")
       .trim();
