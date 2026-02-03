@@ -76,7 +76,7 @@ export default function VoiceAssistant({ userId }) {
   }
 
   return (
-    <div className="fixed bottom-8 right-8 flex flex-col items-end gap-3 z-50 font-sans">
+    <div className="fixed bottom-1 right-8 flex flex-col items-end gap-3 z-50 font-sans">
       {/* Error Toast */}
       {speechError && (
         <div className="animate-in slide-in-from-right-10 fade-in duration-300 flex items-center gap-2 px-3 py-2 rounded-xl bg-red-950/90 border border-red-500/30 text-red-100 text-xs font-medium shadow-lg backdrop-blur-xl mb-1">

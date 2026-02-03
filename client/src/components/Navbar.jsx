@@ -3,17 +3,25 @@ import { Link, useLocation } from "react-router-dom";
 import { Home, BrainCircuit, Bot, Menu, X, Camera } from "lucide-react";
 import { UserButton as ClerkUserButton } from "@clerk/clerk-react";
 import { images } from "../assets/assets";
+import { useNavigate } from "react-router-dom";
+import { useNavigationGuard } from "../context/NavigationGuardContext";
 
 const Navbar = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const { canNavigate } = useNavigationGuard();
 
   const navItems = [
     { name: "Home", path: "/", icon: <Home className="w-4 h-4" /> },
     { name: "Quiz", path: "/quiz", icon: <BrainCircuit className="w-4 h-4" /> },
     { name: "AI Tutor", path: "/tutor", icon: <Bot className="w-4 h-4" /> },
     { name: "Studio", path: "/studio", icon: <Camera className="w-4 h-4" /> },
-    { name: "Concept Test", path: "/concept-test", icon: <Camera className="w-4 h-4" /> },
+    {
+      name: "Concept Test",
+      path: "/concept-test",
+      icon: <Camera className="w-4 h-4" />,
+    },
   ];
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -43,18 +51,23 @@ const Navbar = () => {
           {/* ---  (Hidden on Mobile) --- */}
           <div className="hidden md:flex items-center space-x-1 bg-white/5 rounded-full p-1 border border-white/5">
             {navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+              <button
+                key={item.path}
+                onClick={async () => {
+                  const allowed = await canNavigate(item.path);
+
+                  if (allowed) navigate(item.path);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`cursor-pointer flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                   location.pathname === item.path
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 scale-105"
+                    ? "bg-indigo-600 text-white shadow-lg"
                     : "text-gray-400 hover:text-white hover:bg-white/5"
                 }`}
               >
                 {item.icon}
                 {item.name}
-              </Link>
+              </button>
             ))}
           </div>
 

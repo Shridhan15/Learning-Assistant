@@ -13,6 +13,7 @@ import Footer from "./components/Footer";
 import Studio from "./pages/Studio";
 import ConceptTest from "./pages/ConceptTest";
 import ConceptSession from "./pages/ConceptSession";
+import { NavigationGuardProvider } from "./context/NavigationGuardContext";
 
 const ProtectedLayout = ({ children }) => {
   const { getToken, userId, isLoaded } = useAuth();
@@ -36,21 +37,23 @@ const ProtectedLayout = ({ children }) => {
   const isTutorPage = location.pathname === "/tutor";
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      <Navbar />
+    <NavigationGuardProvider>
+      <div className="min-h-screen bg-gray-950 flex flex-col"> 
+        <Navbar />
+ 
+        <main
+          className={
+            isTutorPage
+              ? "pt-16 w-full flex-1 h-[calc(100vh-4rem)]"
+              : "pt-20 max-w-7xl mx-auto p-4 w-full flex-1"
+          }
+        >
+          {childrenWithProps}
+        </main>
 
-      <main
-        className={
-          isTutorPage
-            ? "pt-16 w-full flex-1 h-[calc(100vh-4rem)]"
-            : "pt-20 max-w-7xl mx-auto p-4 w-full flex-1"
-        }
-      >
-        {childrenWithProps}
-      </main>
-
-      {!isTutorPage && <Footer />}
-    </div>
+        {!isTutorPage && <Footer />}
+      </div>
+    </NavigationGuardProvider>
   );
 };
 

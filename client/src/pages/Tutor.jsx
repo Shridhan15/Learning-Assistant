@@ -10,11 +10,6 @@ import {
   MessageSquare,
   Library,
   FileText,
-  Github,
-  Linkedin,
-  Globe,
-  Heart,
-  Code,
   X,
   Image as ImageIcon,
   Paperclip,
@@ -24,11 +19,14 @@ import {
 import { useUser } from "@clerk/clerk-react";
 import { getDisplayName } from "../utils/fileHelpers";
 import Typewriter from "../components/Typewriter";
+import { useNavigationGuard } from "../context/NavigationGuardContext";
+import SessionSummaryGate from "../components/SessionSummaryGate";
 
 const Tutor = () => {
   const { getToken, userId } = useAuth();
   const { user } = useUser();
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+  const { registerGuard } = useNavigationGuard();
 
   // State
   const [files, setFiles] = useState([]);
@@ -39,6 +37,8 @@ const Tutor = () => {
   const [isSocratic, setIsSocratic] = useState(false);
   const [isFeynman, setIsFeynman] = useState(false);
   const [sessionMsgs, setSessionMsgs] = useState([]);
+  const [showSummaryGate, setShowSummaryGate] = useState(false);
+  const [pendingRoute, setPendingRoute] = useState(null);
 
   // --- STATE SPLIT ---
   const [loading, setLoading] = useState(false);
@@ -52,6 +52,22 @@ const Tutor = () => {
   const [selectedImage, setSelectedImage] = useState(null); // Stores base64 string
   const [imagePreview, setImagePreview] = useState(null); // Stores URL for preview
   const imageInputRef = useRef(null);
+
+  useEffect(() => {
+    registerGuard(async (route) => {
+      const userMsgCount = sessionMsgs.filter((m) => m.role === "user").length;
+
+      if (userMsgCount >= 4) {
+        setPendingRoute(route);
+        setShowSummaryGate(true);
+        return false;
+      }
+
+      return true;
+    });
+
+    return () => registerGuard(null);
+  }, [sessionMsgs]);
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
@@ -159,7 +175,7 @@ const Tutor = () => {
 
     // ---- USER MESSAGE OBJECTS ----
 
-    // UI message  
+    // UI message
     const uiUserMsg = {
       role: "user",
       content: userText,
@@ -167,7 +183,7 @@ const Tutor = () => {
       isNew: true,
     };
 
-    // SESSION message  
+    // SESSION message
     const sessionUserMsg = {
       role: "user",
       content: userText,
@@ -235,19 +251,18 @@ const Tutor = () => {
       };
 
       setMessages((prev) => [...prev, errorMsg]);
-      setSessionMsgs((prev) => [...prev, errorMsg]); 
+      setSessionMsgs((prev) => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-  console.log("Session Messages Updated:", sessionMsgs);
-}, [sessionMsgs]);
-
+    console.log("Session Messages Updated:", sessionMsgs);
+  }, [sessionMsgs]);
 
   const cleanMessage = (content) => {
-    if (!content) return ""; 
+    if (!content) return "";
     return content
       .replace(/\[CONTEXT FROM UPLOADED IMAGE:[\s\S]*?\]/g, "")
       .trim();
@@ -731,6 +746,11 @@ const Tutor = () => {
           </div>
         </div>
       </div>
+      <SessionSummaryGate
+        open={showSummaryGate}
+        pendingRoute={pendingRoute}
+        onClose={() => setShowSummaryGate(false)}
+      />
     </div>
   );
 };
