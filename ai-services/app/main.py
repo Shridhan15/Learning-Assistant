@@ -10,7 +10,7 @@ import pytz
 import requests
 import shutil
 import string
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header,WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, Header,WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel,Field,validator
 from dotenv import load_dotenv
@@ -48,6 +48,7 @@ from app.services.clean_tts import clean_text_for_xml
 from app.services.usage_service import check_and_increment
 from app.routers import usage 
 from app.routers.chat import router as summary_router
+from app.routers.quiz import router as quiz_router
 
 app = FastAPI()
 
@@ -445,12 +446,6 @@ def get_user_results(user_id: str = Header(None)):
     return {"results": response.data}
 
 
-class QuizRequest(BaseModel):
-    topic: str
-    filename: str
-    num_questions: int = Field(5, ge=1, le=20, description="Number of questions to generate")
-    difficulty: Literal["Easy", "Medium", "Hard"] = Field("Medium", description="Quiz difficulty")
-
 class MistakeSchema(BaseModel):
     question: str
     wrong_answer: str
@@ -507,170 +502,6 @@ async def save_quiz_result(result: QuizResultSchema, user_id: str = Header(...))
         print(f"Error saving result: {e}") 
         raise HTTPException(status_code=500, detail="Failed to save result")
     
-
-class Question(BaseModel):
-    id: int = Field(..., description="The question number (1, 2, 3...)")
-    question: str = Field(..., description="The question text")
-    options: List[str] = Field(..., min_length=4, max_length=4, description="List of exactly 4 options")
-    correctAnswer: str = Field(..., description="The correct option text (must match one of the options)")
-    explanation: str = Field(..., description="A clear 1-2 sentence explanation of why the answer is correct.")
-
-
-class QuizResponse(BaseModel):
-    context_summary: str = Field(..., description="A 1-2 sentence summary of the text content.")
-    questions: List[Question]
-
- 
-
-def clean_context_text(text: str) -> str:
-    # List of keywords that usually mark the end of the story/chapter
-    stop_markers = [
-        "Exercises", "Think as you read", "Understanding the text", 
-        "Vocabulary", "Glossary", "Acknowledgements", "About the Author"
-    ]
-    
-    # Find the earliest occurrence of any marker and cut the text there
-    lowest_index = len(text)
-    found = False
-    
-    for marker in stop_markers:
-        # Case-insensitive search
-        idx = text.lower().find(marker.lower())
-        if idx != -1 and idx < lowest_index:
-            lowest_index = idx
-            found = True
-            
-    # If found, cut the text. If not, return original.
-    if found:
-        # Keep a buffer of 50 chars just in case, but usually cut exactly at marker
-        return text[:lowest_index].strip()
-    
-    return text
-
-
-
-@app.post("/generate-quiz")
-async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
-    await check_and_increment(user_id, "quiz_questions", amount=req.num_questions)
-    print(f"Generating {req.num_questions} questions ({req.difficulty}) for: {req.topic}")
-
-    # Retrieve Context
-    retrieved_chunks = retrieve(req.topic, req.filename, user_id)
-    if not retrieved_chunks:
-        return {"questions": []}
-
-    raw_context = "\n".join(retrieved_chunks)
-    clean_context = clean_context_text(raw_context)
-
-    # ---------------- DIFFICULTY RULES ---------------- #
-
-    difficulty_instructions = {
-        "Easy": (
-            "EASY MODE (Atomic Recall Only):\n"
-            "- Each question MUST map to exactly ONE sentence or definition in the text.\n"
-            "- Allowed forms ONLY: What / Who / When / Where / Define.\n"
-            "- NO paraphrasing, NO inference, NO combining facts.\n"
-            "- If removing the source sentence makes the question unanswerable, it is INVALID.\n"
-            "- Each question must test a DIFFERENT fact.\n"
-            "- Distractors must be same-domain but clearly incorrect."
-        ),
-
-        "Medium": (
-            "MEDIUM MODE (Single-Concept Understanding):\n"
-            "- Each question MUST transform ONE concept from the text.\n"
-            "- Allowed reasoning: explanation, cause-effect, or meaning.\n"
-            "- MUST rely on ONE concept only.\n"
-            "- If answer can be copied verbatim from the text, it is INVALID.\n"
-            "- NO scenarios, NO real-world cases.\n"
-            "- Distractors must be realistic misunderstandings of the SAME concept."
-        ),
-
-        "Hard": (
-            "HARD MODE (Verified Multi-Hop Reasoning ONLY):\n"
-            "- EACH question MUST combine TWO DISTINCT concepts from DIFFERENT parts of the text.\n"
-            "- Required reasoning pattern: Concept A + Concept B → Inference.\n"
-            "- If the question can be answered using only ONE concept, it is INVALID.\n"
-            "- Questions MUST be scenario-based and require prediction or decision.\n"
-            "- Ask ONLY for BEST / MOST APPROPRIATE / MOST LIKELY outcome.\n"
-            "- NO definitions, NO explanations, NO direct restatement of text.\n"
-            "- Each question must test a UNIQUE pair of concepts.\n"
-            "- Distractors must be partially correct but fail due to ONE missing inference."
-        )
-    }
-
-    difficulty_key = req.difficulty.strip().capitalize()
-    selected_difficulty_prompt = difficulty_instructions.get(
-        difficulty_key, difficulty_instructions["Medium"]
-    )
-
-    # Debug (optional but recommended)
-    print("Difficulty key used:", difficulty_key)
-
-    # ---------------- LLM CALL ---------------- #
-
-    try:
-        quiz_data = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            max_retries=3,
-            temperature=0.3,
-            response_model=QuizResponse,
-            messages=[
-                {
-                    "role": "system",
-                    "content": f"""
-You are an expert psychometrician and assessment specialist.
-
-Your task is to generate a {req.num_questions}-question multiple-choice quiz
-that STRICTLY follows the requested difficulty rules.
-
-STRICT DIFFICULTY ENFORCEMENT: {difficulty_key}
-{selected_difficulty_prompt}
-
-REASONING CONTRACT (MANDATORY):
-- Easy → one sentence → one question
-- Medium → one concept → one transformation, make sure elimination of options is not easy
-- Hard → Concept A + Concept B → inference, make each options look like a possible right answer, but there should be only one correct answer
-
-If this structure cannot be met, DO NOT generate the question.
-
-CRITICAL QUESTION DESIGN RULES:
-1) SOURCE TEXT ONLY (no outside knowledge).
-2) Exactly ONE correct option (A–D).
-3) Exactly 4 options. No All/None.
-4) No negative framing (NOT / EXCEPT).
-5) Questions must be independent.
-6) Distractors must be concept-related.
-
-EXCLUSIONS:
-Ignore sections titled Exercises, Glossary, References, About the Author.
-
-OUTPUT FORMAT:
-Return ONLY a valid QuizResponse object.
-"""
-                },
-                {
-                    "role": "user",
-                    "content": f"""
-Generate the quiz using ONLY the text below.
-
------ BEGIN SOURCE TEXT -----
-{clean_context}
------ END SOURCE TEXT -----
-
-Topic: {req.topic}
-"""
-                }
-            ],
-        )
-        return quiz_data.model_dump()
-
-    except Exception as e:
-        print(f"Error calling Groq: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate quiz")
-  
-    
-
- 
 
 class ChatMessage(BaseModel):
     role: str
@@ -979,8 +810,6 @@ def get_daily_podcast(request: PodcastRequest):
         print(f" CRITICAL ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     
-
-
 app.include_router(usage.router, prefix="/api", tags=["Usage"]) 
 app.include_router(summary_router)
-
+app.include_router(quiz_router)

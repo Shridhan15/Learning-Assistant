@@ -25,7 +25,7 @@ function MonthlyHeatmap({ data = [] }) {
       const d = new Date();
       d.setDate(today.getDate() - i);
 
-      const dateKey = d.toLocaleDateString("en-CA"); // ✅ local
+      const dateKey = d.toLocaleDateString("en-CA"); //  local
       const readableDate = d.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
@@ -37,7 +37,7 @@ function MonthlyHeatmap({ data = [] }) {
 
     data.forEach((item) => {
       if (!item.created_at) return;
-      const itemDate = new Date(item.created_at).toLocaleDateString("en-CA"); // ✅ local
+      const itemDate = new Date(item.created_at).toLocaleDateString("en-CA"); //  local
 
       if (daysMap[itemDate]) {
         daysMap[itemDate].count += 1;
@@ -95,7 +95,7 @@ function MonthlyHeatmap({ data = [] }) {
   );
 }
 
-// --- 2. Stat Chip ---
+// ---  Stat Chip ---
 function StatChip({
   icon: Icon,
   label,
@@ -284,14 +284,14 @@ export default function TodaysHighlights({ results = [] }) {
 
             {/* Charts Section */}
             <div className="flex flex-col md:flex-row gap-4">
-              {/* Left: Heatmap */}
+              {/* Left- Heatmap */}
               <div className="w-full md:w-auto shrink-0 rounded-xl border border-white/5 bg-black/20 p-3 flex flex-col justify-center">
                 <MonthlyHeatmap data={results} />
               </div>
 
-              {/* Right: Chart */}
+              {/* Right- Chart */}
               <div className="flex-1 min-w-0 rounded-xl border border-white/5 bg-black/20 p-3 relative">
-                {/* Header */}
+                
                 <div className="flex items-center gap-2 mb-2 text-[11px] font-medium text-gray-400 px-1">
                   <TrendingUp className="w-3 h-3 text-emerald-400" />
                   Score Trajectory
