@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "@clerk/clerk-react";
+
 import {
   Trophy,
   Target,
@@ -46,6 +48,14 @@ function MonthlyHeatmap({ data = [] }) {
 
     return result;
   }, [data]);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
 
   const getColor = (count) => {
     if (count === 0) return "bg-white/5 border-transparent";
@@ -141,8 +151,8 @@ export function isBetween10pmAnd12amLocal() {
 }
 
 export default function TodaysHighlights({ results = [] }) {
+  const { user } = useUser();
   const navigate = useNavigate();
-  const show = useMemo(() => isBetween10pmAnd12amLocal(), []);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -203,44 +213,50 @@ export default function TodaysHighlights({ results = [] }) {
     };
   }, [results]);
 
-  if (!show) return null;
-
   return (
     <div className="w-full bg-gray-900/50 border border-white/10 rounded-2xl transition-all duration-300 shadow-xl shadow-black/20 group backdrop-blur-md">
       {/* Content */}
       <div className="p-4 sm:p-5">
         {!stats ? (
-          <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/50 via-gray-900/30 to-indigo-900/20 p-6 text-center">
-            {/* Decorative Background Blur */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700" />
+          <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-gray-900/60 via-gray-900/40 to-indigo-900/20 p-6 text-center">
+            {/* Decorative Glow */}
+            <div className="absolute -top-12 -right-12 w-36 h-36 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700" />
 
             <div className="relative z-10 flex flex-col items-center">
-              {/* Icon with Ring Effect */}
-              <div className="relative mb-3">
+              {/* Icon */}
+              <div className="relative mb-4">
                 <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-md animate-pulse" />
                 <div className="relative p-3 bg-gray-800/80 rounded-full border border-white/10 shadow-xl">
                   <BrainCircuit className="w-6 h-6 text-indigo-400" />
                 </div>
               </div>
 
-              <h3 className="text-white font-semibold text-sm tracking-wide">
-                Ready to Test Yourself?
+              {/* Greeting */}
+              <h3 className="text-white font-semibold text-base tracking-wide">
+                {`Start learning${user?.firstName ? `, ${user.firstName}` : ""} `}
               </h3>
 
-              <p className="text-gray-400 text-[11px] mt-1 mb-4 max-w-[200px] leading-relaxed">
-                No quizzes taken today. Consistency is key to mastery!
+              {/* Motivational Text */}
+              <p className="text-gray-400 text-xs mt-2 mb-4 max-w-[240px] leading-relaxed">
+                You’re one quiz away from building today’s momentum. Small steps
+                now create big results later.
               </p>
 
+              {/* CTA Button */}
               <button
                 onClick={() => navigate("/quiz")}
-                className="cursor-pointer group/btn relative px-5 py-2 bg-white text-indigo-950 text-xs font-bold rounded-lg overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+                className="cursor-pointer group/btn relative px-6 py-2 bg-white text-indigo-950 text-xs font-bold rounded-lg overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-200 via-white to-indigo-200 opacity-0 group-hover/btn:opacity-50 transition-opacity duration-500" />
                 <span className="relative flex items-center gap-2">
-                  Start Daily Quiz
+                  Take Today’s Quiz
                   <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
                 </span>
               </button>
+
+              <p className="text-[10px] text-indigo-300/60 mt-4">
+                Consistency beats intensity.
+              </p>
             </div>
           </div>
         ) : (
@@ -291,7 +307,6 @@ export default function TodaysHighlights({ results = [] }) {
 
               {/* Right- Chart */}
               <div className="flex-1 min-w-0 rounded-xl border border-white/5 bg-black/20 p-3 relative">
-                
                 <div className="flex items-center gap-2 mb-2 text-[11px] font-medium text-gray-400 px-1">
                   <TrendingUp className="w-3 h-3 text-emerald-400" />
                   Score Trajectory

@@ -21,10 +21,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [groupedResults, setGroupedResults] = useState({});
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-  const [calendarEvents, setCalendarEvents] = useState([]);
-
-  const showHighlights = useMemo(() => isBetween10pmAnd12amLocal(), []);
-
+  const [calendarEvents, setCalendarEvents] = useState([]); 
   const fetchCalendarEvents = async () => {
     try {
       const token = await getToken();
@@ -175,7 +172,7 @@ const Home = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500 pb-10">
-      {showHighlights && allResults.length > 0 && (
+      { allResults.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center gap-3">
             <div className="h-8 w-1 bg-indigo-500 rounded-full"></div>{" "}
