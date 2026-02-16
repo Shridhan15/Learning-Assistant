@@ -11,13 +11,9 @@ async def get_user_usage(user_id: str = Header(..., alias="user-id")):
     Returns the user's current usage stats and the system limits.
     Triggers a 'Lazy Reset' via the service if it's a new day in IST.
     """
-    try:
-        # 1. Get dynamic data from Service
-        # (The service handles the DB fetch and the IST date reset logic)
+    try: 
         data = await usage_service.get_usage_stats(user_id)
-
-        # 2. Return Response combining Data + Limits
-        # We inject limits here so the Frontend doesn't need hardcoded values.
+ 
         return UsageResponse(
             # --- Dynamic Data (From DB) ---
             total_files_uploaded=data.get("total_files_uploaded", 0),
@@ -33,5 +29,5 @@ async def get_user_usage(user_id: str = Header(..., alias="user-id")):
         )
 
     except Exception as e:
-        print(f"❌ Error in /usage endpoint: {e}")
+        print(f" Error in /usage endpoint: {e}")
         raise HTTPException(status_code=500, detail="Failed to load usage stats")

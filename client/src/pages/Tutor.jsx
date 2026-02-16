@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import { useNavigate } from "react-router-dom";
+
 import {
   Send,
   Bot,
@@ -27,6 +29,7 @@ const Tutor = () => {
   const { user } = useUser();
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
   const { registerGuard } = useNavigationGuard();
+  const navigate = useNavigate();
 
   // State
   const [files, setFiles] = useState([]);
@@ -36,9 +39,10 @@ const Tutor = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSocratic, setIsSocratic] = useState(false);
   const [isFeynman, setIsFeynman] = useState(false);
-  const [sessionMsgs, setSessionMsgs] = useState([]);
+  const [sessionMsgs, setSessionMsgs] = useState({});
   const [showSummaryGate, setShowSummaryGate] = useState(false);
   const [pendingRoute, setPendingRoute] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
 
   // --- STATE SPLIT ---
   const [loading, setLoading] = useState(false);
@@ -55,19 +59,24 @@ const Tutor = () => {
 
   useEffect(() => {
     registerGuard(async (route) => {
-      const userMsgCount = sessionMsgs.filter((m) => m.role === "user").length;
+      if (!selectedFile) return true; // No file, no session to summarize
+
+      const currentFileMsgs = sessionMsgs[selectedFile] || [];
+      const userMsgCount = currentFileMsgs.filter(
+        (m) => m.role === "user",
+      ).length;
 
       if (userMsgCount >= 4) {
         setPendingRoute(route);
+        setPendingFile(null); // Ensure we aren't mixing route and file switches
         setShowSummaryGate(true);
         return false;
       }
-
       return true;
     });
 
     return () => registerGuard(null);
-  }, [sessionMsgs]);
+  }, [sessionMsgs, selectedFile, registerGuard]);
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
@@ -163,6 +172,7 @@ const Tutor = () => {
 
   // Handle Send
   const handleSend = async (e) => {
+    const currentFile = selectedFile;
     e.preventDefault();
 
     if ((!input.trim() && !selectedImage) || !selectedFile) return;
@@ -197,7 +207,10 @@ const Tutor = () => {
 
     // 2️ Update SESSION
     if (userText) {
-      setSessionMsgs((prev) => [...prev, sessionUserMsg]);
+      setSessionMsgs((prev) => ({
+        ...prev,
+        [currentFile]: [...(prev[currentFile] || []), sessionUserMsg],
+      }));
     }
 
     setLoading(true);
@@ -240,7 +253,10 @@ const Tutor = () => {
       setMessages((prev) => [...prev, uiAiMsg]);
 
       // 4️ Update SESSION (TEXT ONLY)
-      setSessionMsgs((prev) => [...prev, sessionAiMsg]);
+      setSessionMsgs((prev) => ({
+        ...prev,
+        [currentFile]: [...(prev[currentFile] || []), sessionAiMsg],
+      }));
     } catch (error) {
       console.error(error);
 
@@ -266,6 +282,43 @@ const Tutor = () => {
     return content
       .replace(/\[CONTEXT FROM UPLOADED IMAGE:[\s\S]*?\]/g, "")
       .trim();
+  };
+
+  const handleFileSwitch = (newFile) => {
+    if (selectedFile === newFile) return;
+
+    // Get messages for the file the user is CURRENTLY looking at
+    const currentFileMsgs = sessionMsgs[selectedFile] || [];
+    const userMsgCount = currentFileMsgs.filter(
+      (m) => m.role === "user",
+    ).length;
+
+    if (userMsgCount >= 4) {
+      // Stop the switch and show the gate
+      setPendingFile(newFile);
+      setShowSummaryGate(true);
+    } else {
+      // Switch immediately and clear the session for a fresh start
+      performActualSwitch(newFile);
+    }
+  };
+
+  const performActualSwitch = (newFile) => {
+    const oldFile = selectedFile; // Capture the file we are leaving
+
+    setSelectedFile(newFile);
+    loadChatHistory(newFile);
+
+    setSessionMsgs((prev) => {
+      const newState = { ...prev };
+      if (oldFile) {
+        delete newState[oldFile]; // Clean up the old session
+      }
+      return newState;
+    });
+
+    setPendingFile(null);
+    setPendingRoute(null);
   };
 
   return (
@@ -299,12 +352,7 @@ const Tutor = () => {
             files.map((file) => (
               <button
                 key={file}
-                onClick={() => {
-                  if (selectedFile !== file) {
-                    setSelectedFile(file);
-                    loadChatHistory(file);
-                  }
-                }}
+                onClick={() => handleFileSwitch(file)}
                 className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
                 ${
                   selectedFile === file
@@ -404,13 +452,7 @@ const Tutor = () => {
             files.map((file) => (
               <button
                 key={file}
-                onClick={() => {
-                  if (selectedFile !== file) {
-                    setSelectedFile(file);
-                    loadChatHistory(file);
-                  }
-                  setIsMobileSidebarOpen(false);
-                }}
+                onClick={() => handleFileSwitch(file)}
                 className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
                 ${
                   selectedFile === file
@@ -748,10 +790,22 @@ const Tutor = () => {
       </div>
       <SessionSummaryGate
         open={showSummaryGate}
-        pendingRoute={pendingRoute}
-        onClose={() => setShowSummaryGate(false)}
+        sessionMsgs={sessionMsgs[selectedFile] || []}
         API_BASE_URL={API_BASE_URL}
-        sessionMsgs={sessionMsgs}
+        onClose={() => {
+          setShowSummaryGate(false);
+          if (pendingFile) {
+            performActualSwitch(pendingFile);
+            setPendingFile(null); // Reset
+          } 
+          else if (pendingRoute) { 
+            setSessionMsgs({}); 
+            registerGuard(null);
+ 
+            navigate(pendingRoute);
+            setPendingRoute(null); // Reset
+          }
+        }}
       />
     </div>
   );
