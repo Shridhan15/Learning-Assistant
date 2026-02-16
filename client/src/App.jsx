@@ -9,49 +9,45 @@ import QuizAssistant from "./components/QuizAssistant";
 import Login from "./pages/Login";
 import Tutor from "./pages/Tutor";
 import Hero from "./components/Hero";
-import Footer from "./components/Footer";
 import Studio from "./pages/Studio";
 import ConceptTest from "./pages/ConceptTest";
 import ConceptSession from "./pages/ConceptSession";
 import { NavigationGuardProvider } from "./context/NavigationGuardContext";
+import Dashboard from "./pages/Dashboard";
 
 const ProtectedLayout = ({ children }) => {
   const { getToken, userId, isLoaded } = useAuth();
   const location = useLocation();
 
-  if (!isLoaded) {
+  if (!isLoaded)
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center text-white">
         Loading...
       </div>
     );
-  }
 
-  const childrenWithProps = React.Children.map(children, (child) => {
-    if (React.isValidElement(child)) {
-      return React.cloneElement(child, { getToken, userId });
-    }
-    return child;
-  });
+  const childrenWithProps = React.Children.map(children, (child) =>
+    React.isValidElement(child)
+      ? React.cloneElement(child, { getToken, userId })
+      : child,
+  );
 
   const isTutorPage = location.pathname === "/tutor";
+  const isDashboard = location.pathname === "/dashboard";
 
   return (
     <NavigationGuardProvider>
-      <div className="min-h-screen bg-gray-950 flex flex-col"> 
+      <div className="h-screen bg-gray-950 flex flex-col overflow-hidden no-scrollbar">
         <Navbar />
- 
         <main
           className={
-            isTutorPage
-              ? "pt-16 w-full flex-1 h-[calc(100vh-4rem)]"
-              : "pt-20 max-w-7xl mx-auto p-4 w-full flex-1"
+            isTutorPage || isDashboard
+              ? "pt-16 w-full flex-1 h-[calc(100vh-4rem)] no-scrollbar" // Full width for Dashboard
+              : "pt-20 max-w-7xl mx-auto p-4 w-full flex-1 overflow-y-auto no-scrollbar" // Boxed for others
           }
         >
           {childrenWithProps}
         </main>
-
-        {!isTutorPage && <Footer />}
       </div>
     </NavigationGuardProvider>
   );
@@ -83,6 +79,21 @@ const App = () => {
             <SignedIn>
               <ProtectedLayout>
                 <QuizAssistant />
+              </ProtectedLayout>
+            </SignedIn>
+            <SignedOut>
+              <Navigate to="/" replace />
+            </SignedOut>
+          </>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <>
+            <SignedIn>
+              <ProtectedLayout>
+                <Dashboard />
               </ProtectedLayout>
             </SignedIn>
             <SignedOut>

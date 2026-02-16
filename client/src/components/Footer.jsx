@@ -23,7 +23,7 @@ const Footer = () => {
             © {new Date().getFullYear()} AI StudyMate Project.
           </p>
         </div>
- 
+
         <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-xs text-slate-400">
           <Code2 className="w-3 h-3" />
           <span>Built with React & Python</span>
