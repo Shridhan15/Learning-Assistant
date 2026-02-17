@@ -792,6 +792,7 @@ const Tutor = () => {
         open={showSummaryGate}
         sessionMsgs={sessionMsgs[selectedFile] || []}
         API_BASE_URL={API_BASE_URL}
+        activeFile={selectedFile}
         onClose={() => {
           setShowSummaryGate(false);
           if (pendingFile) {

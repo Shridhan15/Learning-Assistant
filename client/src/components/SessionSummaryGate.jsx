@@ -1,17 +1,22 @@
 import React, { useState } from "react";
 import { Loader2, Save, X, FileText } from "lucide-react";
+import { useUser } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/clerk-react";
 
 const SessionSummaryGate = ({
   open,
-  onClose, // This will handle the final "Cleanup" in Tutor.js
+  onClose, 
   sessionMsgs,
+  activeFile,
   API_BASE_URL,
 }) => {
   const [mode, setMode] = useState("prompt");
   const [summaryData, setSummaryData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { user, isLoaded } = useUser();
 
+  const { getToken, userId } = useAuth();
   if (!open) return null;
 
   // We remove navigate and registerGuard from here.
@@ -47,11 +52,48 @@ const SessionSummaryGate = ({
     }
   };
 
-  const handleSaveToSupabase = async () => {
-    // TODO: Add your Supabase insert logic here
-    // Use the summaryData.title and summaryData.key_points
-    console.log("Saving to Supabase...", summaryData);
-    handleFinalize();
+  const handleSaveSummary = async () => {
+    console.log("Button Clicked!");
+    try {
+      setLoading(true);
+      const token = await getToken();
+      console.log("2. Token received:", !!token);
+      console.log("3. Data being sent:", {
+        filename: activeFile,
+        title: summaryData?.title,
+        userId: userId,
+      });
+
+      const response = await fetch(`${API_BASE_URL}/save-summary`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "user-id": userId,
+        },
+        body: JSON.stringify({
+          filename: activeFile,
+          title: summaryData.title,
+          key_points: summaryData.key_points,
+          struggle_area: summaryData.struggle_area,
+        }),
+      });
+      console.log("4. Response status:", response.status);
+
+      if (response.ok) {
+        console.log("Summary saved successfully!");
+        handleFinalize(); // Close the modal and continue navigation
+      } else {
+        const errorData = await response.json();
+        console.error("6. Server Error Data:", errorData);
+        throw new Error("Failed to save");
+      }
+    } catch (err) {
+      console.error("7. Catch Block caught error:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -154,8 +196,8 @@ const SessionSummaryGate = ({
                   Discard
                 </button>
                 <button
-                  onClick={handleSaveToSupabase}
-                  className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 font-medium"
+                  onClick={handleSaveSummary}
+                  className="cursor-pointer px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 font-medium"
                 >
                   <Save className="w-4 h-4" /> Save to Notes
                 </button>

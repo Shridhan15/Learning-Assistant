@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException,Header
 from pydantic import BaseModel, Field
 from typing import List
 import os
@@ -7,10 +7,18 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from dotenv import load_dotenv
-
+from supabase import create_client, Client 
+from supabase.client import ClientOptions
 load_dotenv()
 
 router = APIRouter()
+
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 # --------- Pydantic Models ---------
 
@@ -30,22 +38,19 @@ class SessionSummaryData(BaseModel):
 class SummaryResponse(BaseModel):
     data: SessionSummaryData
 
-# --------- GROQ MODEL ---------
-
 chat_model = ChatGroq(
-    temperature=0.3, # Lower temp for more consistent formatting
+    temperature=0.3, 
     model_name="llama-3.3-70b-versatile",
     groq_api_key=os.environ.get("GROQ_API_KEY"),
 )
 
-# Set up the parser
 parser = PydanticOutputParser(pydantic_object=SessionSummaryData)
 
 # --------- SUMMARY ENDPOINT ---------
 
 @router.post("/generate-summary", response_model=SummaryResponse)
 async def generate_summary(req: SummaryRequest):
-    if not req.messages or len(req.messages) < 2:
+    if not req.messages or len(req.messages) < 4:
         raise HTTPException(
             status_code=400,
             detail="Not enough messages to generate summary"
@@ -70,7 +75,6 @@ async def generate_summary(req: SummaryRequest):
         """)
     ])
 
-    # 3. Chain & Execute
     chain = prompt | chat_model | parser
 
     try:
@@ -88,3 +92,31 @@ async def generate_summary(req: SummaryRequest):
             status_code=500,
             detail="Failed to generate structured summary."
         )
+    
+
+class SaveSummaryRequest(BaseModel):
+    filename: str
+    title: str
+    key_points: List[str]
+    struggle_area: str
+
+
+@router.post("/save-summary")
+async def save_summary(req: SaveSummaryRequest, user_id: str = Header(None,alias="user-id")):
+    try:
+        # Assuming you have initialized the supabase client in your FastAPI app
+        print(f"Saving summary for User: {user_id}, File: {req.filename}")
+        data = {
+            "user_id": user_id,
+            "file_name": req.filename,
+            "title": req.title,
+            "key_points": req.key_points, 
+            "struggle_area": req.struggle_area
+        }
+        
+        result = supabase.table("notes").insert(data).execute()
+        return {"status": "success", "message": "Summary saved to notes"}
+        
+    except Exception as e:
+        print(f"Error saving to Supabase: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save summary to database")
