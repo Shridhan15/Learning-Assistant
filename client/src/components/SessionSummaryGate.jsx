@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { Loader2, Save, X, FileText } from "lucide-react";
+import { Loader2, Save, X, FileText, } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 import { useAuth } from "@clerk/clerk-react";
-
+import toast from "react-hot-toast";
 const SessionSummaryGate = ({
   open,
   onClose, 

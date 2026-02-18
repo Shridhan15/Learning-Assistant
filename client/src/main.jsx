@@ -4,6 +4,7 @@ import "./index.css";
 import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
 import { ClerkProvider } from "@clerk/clerk-react";
+import { Toaster } from "react-hot-toast"; // 1. Import the Toaster
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -11,6 +12,16 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
       <BrowserRouter>
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            style: {
+              background: "#111827", 
+              color: "#fff",
+              border: "1px solid #374151",
+            },
+          }}
+        />
         <App />
       </BrowserRouter>
     </ClerkProvider>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import UsageStats from "../components/UsageStats";
 import StudyCalendar from "../components/StudyCalendar/StudyCalendar";
+import Notes from "../components/Notes";
 
 const Dashboard = () => {
   const { user } = useUser();
@@ -136,7 +137,7 @@ const Dashboard = () => {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar">
           <div className="max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center gap-2 mb-8">
+            <div className="flex items-center gap-2 mb-4">
               <div className="w-1 h-6 bg-indigo-500 rounded-full" />
               <h1 className="text-2xl font-bold text-white tracking-tight">
                 {menuItems.find((i) => i.id === activeTab)?.label}
@@ -160,9 +161,8 @@ const Dashboard = () => {
             )}
 
             {activeTab === "notes" && (
-              <div className="h-[500px] border-2 border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center text-gray-500">
-                <StickyNote size={48} className="mb-4 opacity-20" />
-                <p>Notes integration coming soon.</p>
+              <div className="animate-in fade-in duration-500 h-[calc(100vh-100px)]">
+                <Notes />
               </div>
             )}
           </div>

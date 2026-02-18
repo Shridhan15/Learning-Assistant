@@ -120,3 +120,18 @@ async def save_summary(req: SaveSummaryRequest, user_id: str = Header(None,alias
     except Exception as e:
         print(f"Error saving to Supabase: {e}")
         raise HTTPException(status_code=500, detail="Failed to save summary to database")
+
+
+@router.get("/get-notes")
+async def get_notes(user_id: str = Header(None, alias="user-id")):
+    try:
+        # Fetch notes for the specific user, ordered by most recent
+        result = supabase.table("notes")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .order("created_at", desc=True)\
+            .execute()
+            
+        return {"notes": result.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
