@@ -18,34 +18,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [groupedResults, setGroupedResults] = useState({});
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-  const [calendarEvents, setCalendarEvents] = useState([]);
-  const fetchCalendarEvents = async () => {
-    try {
-      const token = await getToken();
-      const response = await fetch(`${API_BASE_URL}/get-calendar-events`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "user-id": userId,
-        },
-      });
-      const data = await response.json();
-
-      const mappedEvents = data.events.map((ev) => ({
-        ...ev,
-        id: ev.id,
-        title: ev.title,
-        start: ev.start_time,
-        end: ev.end_time,
-        priority: ev.priority,
-        category: ev.category,
-      }));
-
-      setCalendarEvents(mappedEvents);
-    } catch (error) {
-      console.error("Error fetching events:", error);
-    }
-  };
-
+  
   const fetchResults = async () => {
     console.log("STARTING result FETCH...");
     try {
@@ -85,27 +58,7 @@ const Home = () => {
     }
   };
 
-  const handleAddEvent = async (eventPayload) => {
-    try {
-      const token = await getToken();
-      const response = await fetch(`${API_BASE_URL}/add-calendar-event`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          "user-id": userId,
-        },
-        body: JSON.stringify(eventPayload),
-      });
-
-      if (response.ok) {
-        fetchCalendarEvents();
-      }
-    } catch (error) {
-      console.error("Error saving event:", error);
-    }
-  };
-
+ 
   useEffect(() => {
     const loadAllData = async () => {
       if (!userId) return;
@@ -115,7 +68,6 @@ const Home = () => {
         // Run all fetches in parallel
         await Promise.all([
           fetchResults(),
-          fetchCalendarEvents(),
           fetchFiles(),
         ]);
       } catch (error) {

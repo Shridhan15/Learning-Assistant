@@ -49,6 +49,7 @@ from app.services.usage_service import check_and_increment
 from app.routers import usage 
 from app.routers.chat import router as summary_router
 from app.routers.quiz import router as quiz_router
+from app.routers import calendar
 
 app = FastAPI()
 
@@ -673,88 +674,6 @@ async def delete_book(
         print(f"❌ Error deleting book: {e}")
         raise HTTPException(status_code=500, detail=str(e)) 
 
-
-class CalendarEventCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = Field(None, max_length=1000)
-    start_time: str  # ISO from React
-    end_time: str
-    category: str = "Revision"
-    priority: int = Field(1, ge=1, le=3)
-
-    @validator('start_time', 'end_time')
-    def validate_iso(cls, v):
-        datetime.fromisoformat(v.replace('Z', '+00:00'))
-        return v
-
-# 1. ADD EVENT (Your exact style) 
-@app.post("/add-calendar-event")
-async def add_event(
-    event: CalendarEventCreate,
-    authorization: str = Header(None),
-    user_id: str = Header(None)
-):
-    # Standard security check you already have
-    if not authorization or not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    try:
-        event_data = {
-            "user_id": user_id,
-            "title": event.title.strip(),
-            "description": event.description.strip() if event.description else None,
-            "start_time": event.start_time,
-            "end_time": event.end_time,
-            "category": event.category,  
-            "priority": event.priority, 
-            "source": "manual"
-        }
-        # Persist to Supabase
-        response = supabase.table("study_events").insert(event_data).execute()
-        return {"status": "success", "data": response.data[0] if response.data else None}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# 2. GET EVENTS
-@app.get("/get-calendar-events")
-async def get_events(
-    authorization: str = Header(None),
-    user_id: str = Header(None),
-    start_date: Optional[str] = None, 
-    end_date: Optional[str] = None
-):
-    if not authorization or not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    try:
-        query = supabase.table("study_events").select("*").eq("user_id", user_id).order("start_time")
-        
-        if start_date:
-            query = query.gte("start_time", f"{start_date}T00:00:00Z")
-        if end_date:
-            query = query.lte("end_time", f"{end_date}T23:59:59Z")
-
-        max_retries = 3
-        response = None
-        
-        for attempt in range(max_retries):
-            try:
-                response = query.execute()
-                break 
-            except Exception as e:
-                print(f" Attempt {attempt + 1} failed: {e}")
-                if attempt == max_retries - 1:
-                    raise e 
-                time.sleep(0.5) 
-
-        return {"status": "success", "events": response.data, "count": len(response.data)}
-
-    except Exception as e:
-        print(f" CRITICAL FAILURE in /get-calendar-events for user {user_id}")
-        traceback.print_exc() 
-        raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
-    
-
  
 class PodcastRequest(BaseModel):
     user_id: str
@@ -788,10 +707,8 @@ def get_daily_podcast(request: PodcastRequest):
         raw_script = llm.generate_podcast_script(mistakes)
         
         print("  Sanitizing script for Azure TTS...")
-        # 2. Clean it and assign to 'script' (so your downstream code works)
         script = clean_text_for_xml(raw_script)
         
-        # Now 'script' is defined and safe to use!
         print(f"   -> Script Preview: {script[:200]}...")
           
         print("Synthesizing audio with Azure...")
@@ -813,3 +730,4 @@ def get_daily_podcast(request: PodcastRequest):
 app.include_router(usage.router, prefix="/api", tags=["Usage"]) 
 app.include_router(summary_router)
 app.include_router(quiz_router)
+app.include_router(calendar.router)

@@ -34,11 +34,35 @@ const Dashboard = () => {
     { id: "notes", label: "My Notes", icon: <StickyNote size={18} /> },
   ];
 
-  // Logic for fetching calendar events (same as before)
+  const handleAddEvent = async (eventPayload) => {
+    try {
+      const token = await getToken();
+      // Updated URL to match your new FastAPI prefix
+      const response = await fetch(`${API_BASE_URL}/calendar/add-event`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "user-id": userId,
+        },
+        body: JSON.stringify(eventPayload),
+      });
+
+      if (response.ok) {
+        fetchCalendarEvents();
+      } else {
+        const errorData = await response.json();
+        console.error("Server error:", errorData.detail);
+      }
+    } catch (error) {
+      console.error("Error saving event:", error);
+    }
+  };
+
   const fetchCalendarEvents = async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`${API_BASE_URL}/get-calendar-events`, {
+      const response = await fetch(`${API_BASE_URL}/calendar/get-events`, {
         headers: { Authorization: `Bearer ${token}`, "user-id": userId },
       });
       const data = await response.json();
@@ -155,8 +179,11 @@ const Dashboard = () => {
             )}
 
             {activeTab === "calendar" && (
-              <div className="animate-in fade-in zoom-in-95 duration-500 bg-white/5 border border-white/10 rounded-3xl p-6 min-h-[600px]">
-                <StudyCalendar events={calendarEvents} onAddEvent={() => {}} />
+              <div className="animate-in fade-in zoom-in-95 duration-500 bg-white/5 border border-white/10 rounded-3xl p-1 min-h-[600px]">
+                <StudyCalendar
+                  events={calendarEvents}
+                  onAddEvent={handleAddEvent}
+                />
               </div>
             )}
 
