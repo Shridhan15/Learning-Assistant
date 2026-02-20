@@ -131,14 +131,14 @@ const SessionSummaryGate = ({
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
                   onClick={handleFinalize}
-                  className="px-4 py-3 rounded-xl font-medium text-gray-300 hover:bg-gray-800 transition-colors"
+                  className="cursor-pointer px-4 py-3 rounded-xl font-medium text-gray-300 hover:bg-gray-800 transition-colors"
                 >
                   Skip & Continue
                 </button>
                 <button
                   onClick={handleGenerateSummary}
                   disabled={loading}
-                  className="px-4 py-3 rounded-xl font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="cursor-pointer px-4 py-3 rounded-xl font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -191,7 +191,7 @@ const SessionSummaryGate = ({
               <div className="flex justify-end gap-3 mt-3 pt-4 border-t border-gray-800">
                 <button
                   onClick={handleFinalize}
-                  className="px-5 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm font-medium"
+                  className="cursor-pointer px-5 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm font-medium"
                 >
                   Discard
                 </button>

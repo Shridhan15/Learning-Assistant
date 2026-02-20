@@ -218,7 +218,7 @@ const StudyCalendar = ({ events, onAddEvent, onDeleteEvent }) => {
                           </div>
                           <button
                             onClick={() => onDeleteEvent(ev.id)}
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 text-white/20 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                            className=" cursor-pointer absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 text-white/20 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>

@@ -661,7 +661,7 @@ const Tutor = () => {
                 />
                 <button
                   onClick={clearImage}
-                  className="absolute -top-2 -right-2 bg-gray-800 text-gray-400 hover:text-red-400 rounded-full p-0.5 border border-gray-600 shadow-lg transition-colors"
+                  className="cursor-pointer absolute -top-2 -right-2 bg-gray-800 text-gray-400 hover:text-red-400 rounded-full p-0.5 border border-gray-600 shadow-lg transition-colors"
                 >
                   <X className="w-3 h-3" />
                 </button>

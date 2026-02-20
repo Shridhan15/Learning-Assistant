@@ -82,6 +82,33 @@ const Dashboard = () => {
     if (userId) fetchCalendarEvents();
   }, [userId]);
 
+  const handleDeleteEvent = async (eventId) => {
+    // Optional: Add a confirmation dialog
+    if (!window.confirm("Are you sure you want to delete this event?")) return;
+
+    try {
+      const token = await getToken();
+      const response = await fetch(
+        `${API_BASE_URL}/calendar/delete-event/${eventId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "user-id": userId,
+          },
+        },
+      );
+
+      if (response.ok) {
+        fetchCalendarEvents();
+      } else {
+        console.error("Failed to delete event");
+      }
+    } catch (error) {
+      console.error("Error deleting event:", error);
+    }
+  };
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-gray-950/50 backdrop-blur-xl border-r border-white/10">
       <div className="p-6">
@@ -183,6 +210,7 @@ const Dashboard = () => {
                 <StudyCalendar
                   events={calendarEvents}
                   onAddEvent={handleAddEvent}
+                  onDeleteEvent={handleDeleteEvent}
                 />
               </div>
             )}

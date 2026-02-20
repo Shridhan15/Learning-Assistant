@@ -100,3 +100,25 @@ async def get_events(
     except Exception as e:
         traceback.print_exc() 
         raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
+
+
+@router.delete("/delete-event/{event_id}")
+async def delete_event(
+    event_id: str,
+    authorization: str = Header(None),
+    user_id: str = Header(None)
+):
+    if not authorization or not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        response = supabase.table("study_events") \
+            .delete() \
+            .eq("id", event_id) \
+            .eq("user_id", user_id) \
+            .execute()
+
+        return {"status": "success", "message": "Event deleted successfully"}
+    except Exception as e:
+        print(f"Error deleting event: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
