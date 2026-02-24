@@ -22,8 +22,6 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import List, Optional,Literal
 from datetime import datetime
 from pinecone import Pinecone, ServerlessSpec
-from supabase import create_client, Client 
-from supabase.client import ClientOptions
 
 import asyncio
 
@@ -47,29 +45,14 @@ from app.services import azure_voice as tts
 from app.services.clean_tts import clean_text_for_xml
 from app.services.usage_service import check_and_increment
 from app.routers import usage 
-from app.routers.chat import router as summary_router
+from app.routers.chat import router as chat_router
 from app.routers.quiz import router as quiz_router
 from app.routers import calendar
+from app.routers.files import router as file_router
 
 app = FastAPI()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-# 1. Initialize normally (don't worry about the slash here yet)
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-try:
-    # Convert to string to check it safely
-    current_url_str = str(supabase.storage_url)
-    
-    if current_url_str and not current_url_str.endswith("/"):
-        
-        supabase.storage_url = f"{current_url_str}/"
-        print(f"DEBUG: Patched internal Storage URL to: '{supabase.storage_url}'")
-except Exception as e:
-    print(f"DEBUG: Auto-patch failed ({e}). Proceeding hoping for the best.")
- 
+from app.config import supabase
 #  Groq
 client = instructor.from_groq(Groq(api_key=os.environ.get("GROQ_API_KEY")))
 
@@ -94,26 +77,6 @@ chat_model = ChatGroq(
     groq_api_key=os.environ.get("GROQ_API_KEY")
 )
 
-
-#  Get chat history
-@app.get("/chat_history")
-def get_chat_history(filename: str, user_id: str = Header(None)):
-    if not user_id:
-        raise HTTPException(status_code=400, detail="User ID required")
-    
-    try: 
-        response = supabase.table("chat_history")\
-            .select("role, content")\
-            .eq("user_id", user_id)\
-            .eq("filename", filename)\
-            .order("created_at", desc=False)\
-            .execute()
-            
-        return {"history": response.data}
-    except Exception as e:
-        print(f"Error fetching history: {e}")
-        return {"history": []}
-    
 
 class ChatRequest(BaseModel):
     message: str
@@ -594,87 +557,6 @@ async def voice_coach(req: CoachRequest):
         raise HTTPException(status_code=500, detail=f"Coach processing failed: {str(e)}")
     
 
-class DeleteBookRequest(BaseModel):
-    filename: str
-
-@app.post("/delete-book")
-async def delete_book(
-    req: DeleteBookRequest, 
-    user_id: str = Header(..., alias="user-id")
-):
-    print(f" Deleting book: {req.filename} for user: {user_id}")
-
-    try:
-        # 1. DELETE FROM PINECONE
-        try:
-            index = pc.Index(INDEX_NAME)
-            index.delete(
-                filter={
-                    "user_id": user_id,
-                    "filename": req.filename
-                }
-            )
-            print(" Pinecone vectors deleted.")
-        except Exception as pinecone_error:
-            print(f" Pinecone delete failed: {pinecone_error}")
-
-        # 2. DELETE FROM STORAGE
-        supabase.storage.from_("pdfs").remove([req.filename])
-        
-        # 3. CLEAN UP DATABASE TABLES
-
-        quiz_response = supabase.table("quiz_results")\
-            .select("id")\
-            .match({"user_id": user_id, "filename": req.filename})\
-            .execute()
-        
-        # If quizzes exist, delete their related mistakes first
-        if quiz_response.data:
-            quiz_ids = [q['id'] for q in quiz_response.data]
-            print(f"   found {len(quiz_ids)} quizzes to clean up...")
-            
-            # Delete mistakes where 'quiz_result_id' matches our list
-            supabase.table("mistakes")\
-                .delete()\
-                .in_("quiz_result_id", quiz_ids)\
-                .execute()
-            print("   Dependent mistakes deleted.")
-        # Documents
-
-        supabase.table("documents").delete().match({"user_id": user_id, "filename": req.filename}).execute()
-        
-        # Quiz Results
-        supabase.table("quiz_results").delete().match({"user_id": user_id, "filename": req.filename}).execute()
-
-        # Chat History (Handle both filename variations)
-        supabase.table("chat_history").delete().match({"user_id": user_id, "filename": req.filename}).execute()
-        
-        # Handle "short" filename if prefix exists
-        prefix = f"{user_id}_"
-        if req.filename.startswith(prefix):
-            short_filename = req.filename[len(prefix):]
-            supabase.table("chat_history").delete().match({"user_id": user_id, "filename": short_filename}).execute()
-
-        # --- 4. DECREMENT USAGE COUNTER (CRITICAL) ---
-        try:
-            row = supabase.table("user_usage").select("total_files_uploaded").eq("user_id", user_id).single().execute()
-            if row.data:
-                current_count = row.data.get("total_files_uploaded", 0)
-                if current_count > 0:
-                    supabase.table("user_usage").update({
-                        "total_files_uploaded": current_count - 1
-                    }).eq("user_id", user_id).execute()
-                    print(f"📉 Quota updated: {current_count} -> {current_count - 1}")
-        except Exception as usage_err:
-            print(f"⚠️ Usage update error: {usage_err}")
-
-        return {"message": "Book deleted and usage quota restored"}
-    
-    except Exception as e:
-        print(f"❌ Error deleting book: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) 
-
- 
 class PodcastRequest(BaseModel):
     user_id: str
 
@@ -728,6 +610,7 @@ def get_daily_podcast(request: PodcastRequest):
         raise HTTPException(status_code=500, detail=str(e))
     
 app.include_router(usage.router, prefix="/api", tags=["Usage"]) 
-app.include_router(summary_router)
+app.include_router(chat_router)
 app.include_router(quiz_router)
+app.include_router(file_router)
 app.include_router(calendar.router)

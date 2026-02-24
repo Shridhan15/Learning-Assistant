@@ -14,14 +14,12 @@ async def get_user_usage(user_id: str = Header(..., alias="user-id")):
     try: 
         data = await usage_service.get_usage_stats(user_id)
  
-        return UsageResponse(
-            # --- Dynamic Data (From DB) ---
+        return UsageResponse( 
             total_files_uploaded=data.get("total_files_uploaded", 0),
             daily_quiz_questions=data.get("daily_quiz_questions", 0),
             daily_tutor_questions=data.get("daily_tutor_questions", 0),
             daily_coach_msgs=data.get("daily_coach_msgs", 0),
-
-            # --- Static Limits (From Config) ---
+ 
             limit_files=UsageLimits.MAX_FILES,
             limit_quiz=UsageLimits.DAILY_QUIZ_QUESTIONS,
             limit_tutor=UsageLimits.DAILY_TUTOR_QUESTIONS,

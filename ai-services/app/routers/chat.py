@@ -7,23 +7,14 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from dotenv import load_dotenv
-from supabase import create_client, Client 
-from supabase.client import ClientOptions
 load_dotenv()
 
 router = APIRouter()
+from app.config import supabase
 
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
-# --------- Pydantic Models ---------
 
 class Message(BaseModel):
-    role: str   # "user" | "assistant"
+    role: str   
     content: str
 
 class SummaryRequest(BaseModel):
@@ -135,3 +126,23 @@ async def get_notes(user_id: str = Header(None, alias="user-id")):
         return {"notes": result.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/chat_history')
+def get_chat_history(filename: str, user_id: str = Header(None)):
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID required")
+    
+    try: 
+        response = supabase.table("chat_history")\
+            .select("role, content")\
+            .eq("user_id", user_id)\
+            .eq("filename", filename)\
+            .order("created_at", desc=False)\
+            .execute()
+            
+        return {"history": response.data}
+    except Exception as e:
+        print(f"Error fetching history: {e}")
+        return {"history": []}
+    
