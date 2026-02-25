@@ -45,3 +45,20 @@ class QuizResponse(BaseModel):
     questions: List[Question]
 
  
+
+ 
+
+class MistakeSchema(BaseModel):
+    question: str
+    wrong_answer: str
+    correct_answer: str
+    explanation: str
+
+
+class QuizResultSchema(BaseModel):
+    filename: str
+    topic: str
+    score: int
+    total_questions: int
+    difficulty: Literal["Easy", "Medium", "Hard"] = "Medium"
+    mistakes: List[MistakeSchema] = []

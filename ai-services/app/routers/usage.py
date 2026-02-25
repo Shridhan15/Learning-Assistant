@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Header, HTTPException
 from app.services import usage_service
-from app.models.schemas import UsageResponse
+from app.models.usage import UsageResponse
 from app.config import UsageLimits
 
 router = APIRouter()

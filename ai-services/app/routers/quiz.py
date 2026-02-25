@@ -5,9 +5,10 @@ router = APIRouter(
     tags=["Quiz"]
 )
 
-from app.models.quiz import QuizRequest, QuizResponse
+from app.models.quiz import QuizRequest, QuizResponse, QuizResultSchema, MistakeSchema
 from app.services.usage_service import check_and_increment
 from app.services.clean_context_text import clean_context_text
+from app.config import supabase
 
 
 
@@ -28,8 +29,7 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
 
     raw_context = "\n".join(retrieved_chunks)
     clean_context = clean_context_text(raw_context)
-
-    # ---------------- DIFFICULTY RULES ---------------- #
+ 
 
     difficulty_instructions = {
         "Easy": (
@@ -68,9 +68,7 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
     difficulty_key = req.difficulty.strip().capitalize()
     selected_difficulty_prompt = difficulty_instructions.get(
         difficulty_key, difficulty_instructions["Medium"]
-    )
-
-    # Debug (optional but recommended)
+    ) 
     print("Difficulty key used:", difficulty_key)
 
     # ---------------- LLM CALL ---------------- #
@@ -136,3 +134,79 @@ Topic: {req.topic}
         raise HTTPException(status_code=500, detail="Failed to generate quiz")
   
     
+
+
+# Save Endpoint
+@router.post("/save-result")
+async def save_quiz_result(result: QuizResultSchema, user_id: str = Header(...)):
+    try:
+        quiz_insert_response = supabase.table("quiz_results").insert({
+            "user_id": user_id,
+            "filename": result.filename,
+            "topic": result.topic,
+            "score": result.score,
+            "total_questions": result.total_questions,
+            "difficulty": result.difficulty
+        }).execute()
+        
+        new_quiz_id = quiz_insert_response.data[0]['id']
+
+        
+        if result.mistakes:
+            # Prepare the list of dictionaries for bulk insert
+            mistakes_data = [
+                {
+                    "user_id": user_id,
+                    "quiz_result_id": new_quiz_id,
+                    "topic": result.topic,
+                    "question": m.question,
+                    "wrong_answer": m.wrong_answer,
+                    "correct_answer": m.correct_answer,
+                    "explanation": m.explanation,
+                    
+                }
+                for m in result.mistakes
+            ]
+            
+            # Bulk Insert (Efficient)
+            supabase.table("mistakes").insert(mistakes_data).execute()
+        
+        return {"message": "Result and mistakes saved successfully"}
+    
+    except Exception as e:
+        print(f"Error saving result: {e}") 
+        raise HTTPException(status_code=500, detail="Failed to save result")
+    
+
+
+
+
+@router.get("/results")
+def get_user_results(user_id: str = Header(None)):
+    if not user_id:
+        return {"results": []}
+
+    max_retries = 3
+    response = None
+
+    for attempt in range(max_retries):
+        try:
+            # 1. Try to execute the query
+            response = supabase.table("quiz_results")\
+                .select("*")\
+                .eq("user_id", user_id)\
+                .order("created_at", desc=True)\
+                .execute()
+            break 
+
+        except Exception as e:
+            print(f"results Attempt {attempt + 1} failed: {e}")
+             
+            if attempt == max_retries - 1:
+                print(f" CRITICAL FAILURE in /results: {e}") 
+                raise HTTPException(status_code=500, detail="Server disconnected")
+            
+             
+            time.sleep(0.5) 
+
+    return {"results": response.data}

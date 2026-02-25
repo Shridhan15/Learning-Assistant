@@ -19,7 +19,6 @@ def analyze_chat_image(base64_image: str) -> str:
     """
     try:
         # Clean the Base64 String
-        # The frontend might sends "data:image/jpeg;base64,..." - we need to remove that header.
         if "," in base64_image:
             base64_image = base64_image.split(",")[1]
 

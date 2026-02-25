@@ -25,7 +25,7 @@ const DailyPodcast = () => {
 
     try {
       const token = await getToken();
-      const response = await fetch(`${API_BASE_URL}/daily-podcast`, {
+      const response = await fetch(`${API_BASE_URL}/voice/daily-podcast`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

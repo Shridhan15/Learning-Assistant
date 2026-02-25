@@ -70,7 +70,7 @@ const QuizAssistant = ({ getToken, userId }) => {
 
   const fetchFiles = async () => {
     try {
-      const res = await authFetch(`${API_BASE_URL}/files`);
+      const res = await authFetch(`${API_BASE_URL}/files/fetch-files`);
       const data = await res.json();
       setAvailableFiles(data.files || []);
     } catch (err) {
@@ -117,7 +117,7 @@ const QuizAssistant = ({ getToken, userId }) => {
     try {
       const token = await getToken();
 
-      const response = await fetch(`${API_BASE_URL}/upload`, {
+      const response = await fetch(`${API_BASE_URL}/files/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -281,7 +281,7 @@ const QuizAssistant = ({ getToken, userId }) => {
     setScore(calculatedScore);
 
     try {
-      await authFetch(`${API_BASE_URL}/save-result`, {
+      await authFetch(`${API_BASE_URL}/quiz/save-result`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

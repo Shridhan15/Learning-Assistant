@@ -23,7 +23,7 @@ const Home = () => {
     console.log("STARTING result FETCH...");
     try {
       const token = await getToken();
-      const response = await fetch(`${API_BASE_URL}/results`, {
+      const response = await fetch(`${API_BASE_URL}/quiz/results`, {
         headers: { Authorization: `Bearer ${token}`, "user-id": userId },
       });
       const data = await response.json();
@@ -42,7 +42,7 @@ const Home = () => {
     console.log("STARTING FILE FETCH...");
     try {
       const token = await getToken();
-      const response = await fetch(`${API_BASE_URL}/files`, {
+      const response = await fetch(`${API_BASE_URL}/files/fetch-files`, {
         headers: { Authorization: `Bearer ${token}`, "user-id": userId },
       });
 
@@ -93,7 +93,7 @@ const Home = () => {
     try {
       const token = await getToken();
 
-      const response = await fetch(`${API_BASE_URL}/delete-book`, {
+      const response = await fetch(`${API_BASE_URL}/files/delete-book`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

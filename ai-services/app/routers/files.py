@@ -1,22 +1,35 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, File, UploadFile
 from pydantic import BaseModel
 from app.config import supabase
 from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
 import os
+import shutil
+
+
+from app.services.usage_service import check_and_increment
+from app.services.websocket_manager import manager
+from app.rag import load_pdf, chunk_text, store_in_pinecone, retrieve
 
 import asyncio
 
 load_dotenv()
 
-
- 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 INDEX_NAME = "learning-assistant"
 pc = Pinecone(api_key=PINECONE_API_KEY)
 
 
+UPLOAD_DIR = "app/data/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 router = APIRouter()
+
+router = APIRouter(
+    prefix="/files",
+    tags=["Files"]
+)
+
 
 
 class DeleteBookRequest(BaseModel):
@@ -99,4 +112,87 @@ async def delete_book(
         print(f" Error deleting book: {e}")
         raise HTTPException(status_code=500, detail=str(e)) 
 
+
+
+
+
+ 
+@router.post("/upload")
+async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
+    try:
+        #  Create a Unique Filename
+        # Replace spaces to avoid URL encoding issues
+        await check_and_increment( user_id, "upload", amount=1)
+        clean_name = file.filename.replace(" ", "_")
+        unique_filename = f"{user_id}_{clean_name}"
+        
+        #  Update Path to use Unique Name  
+        path = f"{UPLOAD_DIR}/{unique_filename}"
+        
+        with open(path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        #  Check if THIS unique file already exists
+        # We now check against 'unique_filename' instead of raw 'file.filename'
+        existing = supabase.table("documents").select("filename")\
+            .eq("filename", unique_filename)\
+            .execute()
+            
+        if not existing.data: 
+            documents = load_pdf(path)
+            chunks = chunk_text(documents)
+
+
+            async def progress_reporter(current, total, status):
+                await manager.send_progress(user_id, current, total, status)
+            
+            # Pass the UNIQUE filename to Pinecone
+            await store_in_pinecone(chunks, unique_filename, user_id,progress_callback=progress_reporter)
+            
+            # Save the UNIQUE filename to Supabase
+            supabase.table("documents").insert({
+                "filename": unique_filename, 
+                "user_id": user_id
+            }).execute()
+            
+            message = "Uploaded and processed successfully"
+        else:
+            message = "File already exists, skipping processing."
+        
+        # Clean up temp file
+        if os.path.exists(path):
+            os.remove(path)
+
+        return {"message": message, "filename": unique_filename}
+
+    except Exception as e:
+        print(f"Error: {e}")
+        # Clean up if error occurs
+        if 'path' in locals() and os.path.exists(path):
+             os.remove(path)
+        raise HTTPException(status_code=500, detail=str(e))   
+    
+
+
+@router.get("/fetch-files")
+def list_files(user_id: str = Header(None)):  
+    """Fetches filenames belonging ONLY to the current user"""
+    
+    if not user_id:
+        return {"files": []}
+
+    try: 
+        response = supabase.table("documents")\
+            .select("filename")\
+            .eq("user_id", user_id)\
+            .execute()
+        
+        file_list = [item['filename'] for item in response.data]
+        return {"files": file_list}
+        
+    except Exception as e:
+        print(f"Error fetching files: {e}")
+        return {"files": []}
+    
+  
  

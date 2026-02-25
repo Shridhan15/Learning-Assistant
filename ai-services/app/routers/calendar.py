@@ -1,6 +1,4 @@
 from dotenv import load_dotenv
-from supabase import create_client, Client 
-from supabase.client import ClientOptions
 import os
 load_dotenv()
 from fastapi import APIRouter, HTTPException, Header, Depends
@@ -9,13 +7,7 @@ from typing import Optional
 from datetime import datetime
 import time
 import traceback
-
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-# 1. Initialize normally (don't worry about the slash here yet)
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+from app.config import supabase
 
 
 

@@ -119,7 +119,7 @@ const Tutor = () => {
     const fetchFiles = async () => {
       try {
         const token = await getToken();
-        const response = await fetch(`${API_BASE_URL}/files`, {
+        const response = await fetch(`${API_BASE_URL}/files/fetch-files`, {
           headers: { Authorization: `Bearer ${token}`, "user-id": userId },
         });
         const data = await response.json();
