@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException,Header
 from pydantic import BaseModel, Field
 from typing import List
 import os
+import asyncio
 import string
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_groq import ChatGroq
@@ -10,6 +11,14 @@ from langchain_core.output_parsers import PydanticOutputParser
 from typing import List, Optional,Literal
 from dotenv import load_dotenv
 load_dotenv()
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format=" %(message)s"
+)
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -83,8 +92,8 @@ async def generate_summary(req: SummaryRequest):
 
         return {"data": structured_summary}
 
-    except Exception as e:
-        print(f"Error generating summary: {e}")
+    except Exception as e: 
+        logger.error(f"Error generating summary: {e}")
         raise HTTPException(
             status_code=500,
             detail="Failed to generate structured summary."
@@ -100,8 +109,8 @@ class SaveSummaryRequest(BaseModel):
 
 @router.post("/save-summary")
 async def save_summary(req: SaveSummaryRequest, user_id: str = Header(None,alias="user-id")):
-    try: 
-        print(f"Saving summary for User: {user_id}, File: {req.filename}")
+    try:  
+        logger.info(f"Saving summary for User: {user_id}, File: {req.filename}")
         data = {
             "user_id": user_id,
             "file_name": req.filename,
@@ -113,8 +122,8 @@ async def save_summary(req: SaveSummaryRequest, user_id: str = Header(None,alias
         result = supabase.table("notes").insert(data).execute()
         return {"status": "success", "message": "Summary saved to notes"}
         
-    except Exception as e:
-        print(f"Error saving to Supabase: {e}")
+    except Exception as e: 
+        logger.error(f"Error saving summary to database: {e}")
         raise HTTPException(status_code=500, detail="Failed to save summary to database")
 
 
@@ -146,8 +155,8 @@ def get_chat_history(filename: str, user_id: str = Header(None)):
             .execute()
             
         return {"history": response.data}
-    except Exception as e:
-        print(f"Error fetching history: {e}")
+    except Exception as e: 
+        logger.error(f"Error fetching chat history: {e}")
         return {"history": []}
 
 
@@ -180,15 +189,15 @@ async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID required")
     
-    await check_and_increment( user_id, "tutor_chat", amount=1)
-    print(f"DEBUG MODE CHECK: Socratic={request.is_socratic}, Feynman={request.is_feynman}")
+    await check_and_increment( user_id, "tutor_chat", amount=1) 
+    logger.info(f"Received chat message from User: {user_id}, File: {request.filename}, Socratic: {request.is_socratic}, Feynman: {request.is_feynman}")
     
     # Start with the plain text message
     effective_message = request.message
 
     # --- VISION PROCESSING ---
     if request.image:
-        print("Processing chat image with Azure...")
+        logger.info("Processing chat image with Azure...")
         try:
             # Get description from Azure Vision
             image_description = analyze_chat_image(request.image)
@@ -198,9 +207,9 @@ async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
                 f"{request.message}\n\n"
                 f"[CONTEXT FROM UPLOADED IMAGE: {image_description}]"
             )
-            print(f"DEBUG: Image Description: {image_description[:50]}...")
+            logger.info(f"Image description extracted: {image_description[:50]}...") 
         except Exception as e:
-            print(f"Error processing image: {e}") 
+            logger.error(f"Error processing image: {e}") 
             pass
  
     try:
@@ -211,7 +220,8 @@ async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             "content": effective_message 
         }).execute()
     except Exception as e:
-        print(f"Error saving user message: {e}")
+        logger.error(f"Error saving user message: {e}") 
+
 
     # ---  FETCH HISTORY ---
     try:
@@ -224,8 +234,8 @@ async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             .execute()
           
         db_history = history_response.data[::-1] 
-    except Exception as e:
-        print(f"Error fetching history context: {e}")
+    except Exception as e: 
+        logger.error(f"Error fetching history context: {e}")
         db_history = []
 
     
@@ -259,8 +269,8 @@ async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
 "3. Output ONLY the raw query string."
         ),
             ])
-
-            print("DEBUG: Rephrasing for search query...")
+ 
+            logger.info(f"Chat history for rephrasing")
             
             rephrase_chain = rephrase_prompt | chat_model
             
@@ -270,25 +280,28 @@ async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             }).content
         else:
             search_query = effective_message
-
-    print(f"DEBUG: Original='{request.message}' -> Search='{search_query}'")
+ 
+    logger.info(f"Original message: '{request.message}' -> Generated search query: '{search_query}' | Conversational: {is_conversational}")
 
     # ---  RETRIEVE & ANSWER ---
     context_text = ""
     
-    if search_query:
-        print(f"DEBUG: Searching PDF for: '{search_query}'")
-         
-        raw_chunks = retrieve(search_query, request.filename, user_id)
-         
-        top_chunks = raw_chunks[:3] 
-         
-        context_text = "\n\n".join(top_chunks)
-         
+    if search_query: 
+        logger.info(f"Performing RAG retrieval with query: {search_query}")
+        retrieved_chunks = retrieve(search_query, request.filename, user_id)
+
+        if not retrieved_chunks:
+            context_text = ""
+        else:
+            context_text = "\n\n".join(
+                f"(Page {chunk['page']}) {chunk['text']}"
+                for chunk in retrieved_chunks
+            )
+        
         if len(context_text) > 3000:
             context_text = context_text[:3000] + "... [Content Truncated for brevity]"
-    else:
-        print("DEBUG: Skipping Search (Conversational Input)")
+    else: 
+        logger.info("Skipping RAG retrieval due to conversational input")
 
 
     if request.is_feynman: 
@@ -346,10 +359,10 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
             "role": "assistant",
             "content": response.content
         }).execute()
-    except Exception as e:
-        print(f"Error saving AI message: {e}")
-
-    print(f"AI Response: {response.content[:60]}...") 
+    except Exception as e: 
+        logger.error(f"Error saving AI message: {e}")
+ 
+    logger.info(f"AI Response: {response.content[:60]}...")
 
     return {
     "response": response.content, 
