@@ -27,7 +27,14 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
     if not retrieved_chunks:
         return {"questions": []}
 
-    raw_context = "\n".join(retrieved_chunks)
+    texts = []
+
+    for chunk in retrieved_chunks:
+        text = chunk.get("text")
+        if text:
+            texts.append(text)
+
+    raw_context = "\n\n".join(texts)
     clean_context = clean_context_text(raw_context)
  
 

@@ -21,8 +21,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
  
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-INDEX_NAME = "learning-assistant"
-SIMILARITY_THRESHOLD = 0.75
+INDEX_NAME = "learning-assistant" 
 
 # embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 # Initialize Pinecone
@@ -186,7 +185,7 @@ def retrieve(question: str, filename: str, user_id: str, k: int = 5) -> List[Dic
 
             retrieved_chunks.append({
                 "text": metadata.get("text", ""),
-                "page": metadata.get("page", "N/A"),
+                "page": metadata.get("page"),
                 "score": match.get("score", 0)
             })
 

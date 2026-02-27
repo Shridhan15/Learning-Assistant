@@ -294,9 +294,12 @@ async def chat_with_book(request: ChatRequest, user_id: str = Header(None)):
             context_text = ""
         else:
             context_text = "\n\n".join(
-                f"(Page {chunk['page']}) {chunk['text']}"
-                for chunk in retrieved_chunks
-            )
+    f"(Page {chunk['page']}) {chunk['text']}"
+    if chunk.get("page") else chunk["text"]
+    for chunk in retrieved_chunks
+)
+            
+            
         
         if len(context_text) > 3000:
             context_text = context_text[:3000] + "... [Content Truncated for brevity]"
@@ -329,11 +332,19 @@ If explanation:  Report:   Misconceptions, Missing Details, Brief Feedback. Tone
             system_instruction = "You are a helpful AI Tutor. Respond politely to the user and in Short"
 
         else:
-            system_instruction = (
+            system_instruction = ("""
+
                     "You are an AI tutor. Answer ONLY from the context. "
+                    "Use the provided context to answer the question."
                     "Explain simply, like a teacher, in short answers. "
                     "Maintain a friendly tone. not like a robot, user should feel the conversation interesting"
                     "If context lacks the answer, say you don't know."
+                    "IMPORTANT:
+- If page numeber is mentioned then mention the page number in the format:
+  (Source: Page X)
+- If multiple pages are used, mention all relevant pages.
+- Do NOT hallucinate page numbers"
+                                  """
             )
   
 
