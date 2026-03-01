@@ -7,10 +7,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app.services.websocket_manager import manager
-from app.routers import usage 
+from app.routers.usage import router as usage_router 
 from app.routers.chat import router as chat_router
 from app.routers.quiz import router as quiz_router
-from app.routers import calendar
+from app.routers.calendar import router as calendar_router
 from app.routers.files import router as file_router
 from app.routers.voice import router as voice_router
 
@@ -45,9 +45,9 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
         print(f"WebSocket error: {e}")
         manager.disconnect(user_id)
 
-app.include_router(usage.router, prefix="/api", tags=["Usage"]) 
+app.include_router(usage_router) 
 app.include_router(chat_router)
 app.include_router(quiz_router)
 app.include_router(voice_router)
 app.include_router(file_router)
-app.include_router(calendar.router)
+app.include_router(calendar_router)

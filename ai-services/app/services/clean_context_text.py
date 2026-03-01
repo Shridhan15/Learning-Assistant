@@ -17,8 +17,7 @@ def clean_context_text(text: str) -> str:
             found = True
             
     # If found, cut the text. If not, return original.
-    if found:
-        # Keep a buffer of 50 chars just in case, but usually cut exactly at marker
+    if found: 
         return text[:lowest_index].strip()
     
     return text

@@ -4,6 +4,11 @@ from app.models.usage import UsageResponse
 from app.config import UsageLimits
 
 router = APIRouter()
+router = APIRouter(
+    prefix="/api",
+    tags=["Usage"]
+)
+
 
 @router.get("/usage", response_model=UsageResponse)
 async def get_user_usage(user_id: str = Header(..., alias="user-id")):

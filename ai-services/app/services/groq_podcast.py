@@ -46,7 +46,7 @@ NARRATIVE FLOW (Follow this flow, but DO NOT print these labels)
    (e.g., "Hey there! ... Hope you're ready to tackle the day.")
 
 2. **Transition** into the review. 
-   (e.g., "I took a look at your recent mistakes... let's see what we can learn from them.")
+   (e.g., ".. let's see what we can learn from your recent mistakes.")
    (something like this)
 
 3. **The Deep Dive** (The core content).
@@ -69,12 +69,10 @@ def generate_podcast_script(mistakes: list) -> str:
     """Turns a list of mistake objects into a natural language script."""
      
     mistakes_context = ""
-    for idx, m in enumerate(mistakes, 1):
-        # I added explicit headers so Llama doesn't confuse the answers
+    for idx, m in enumerate(mistakes, 1): 
         mistakes_context += f"--- ITEM {idx} ---\n"
         mistakes_context += f"Topic: {m.get('topic', 'General')}\n"
-        mistakes_context += f"Question: {m['question']}\n"
-        # CRITICAL ADDITION BELOW:
+        mistakes_context += f"Question: {m['question']}\n" 
         mistakes_context += f"Student's INCORRECT Answer: {m['wrong_answer']}\n" 
         mistakes_context += f"Actual CORRECT Answer: {m['correct_answer']}\n"
         mistakes_context += f"Context/Explanation: {m['explanation']}\n\n"

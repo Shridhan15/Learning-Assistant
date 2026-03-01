@@ -81,7 +81,7 @@ const Notes = () => {
             <button
               key={fileName}
               onClick={() => setSelectedFile(fileName)}
-              className={`group flex items-center justify-between p-3 rounded-xl transition-all duration-300 border ${
+              className={` cursor-pointer group flex items-center justify-between p-3 rounded-xl transition-all duration-300 border ${
                 selectedFile === fileName
                   ? "bg-indigo-600 border-indigo-400 shadow-lg"
                   : "bg-gray-900/40 border-white/5 hover:border-white/20"

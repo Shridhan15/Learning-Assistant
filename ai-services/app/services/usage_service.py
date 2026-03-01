@@ -61,8 +61,7 @@ async def check_and_increment(user_id: str, feature: str, amount: int = 1):
     current_val = 0
     limit_val = 0
     col_name = ""
-
-    # Map feature names to DB columns and Limits
+ 
     if feature == "quiz_questions":
         col_name = "daily_quiz_questions"
         limit_val = UsageLimits.DAILY_QUIZ_QUESTIONS
@@ -79,18 +78,15 @@ async def check_and_increment(user_id: str, feature: str, amount: int = 1):
         raise ValueError(f"Unknown feature: {feature}")
 
     current_val = data.get(col_name, 0)
-
-    # 4. Check if Request Exceeds Limit
+ 
     if (current_val + amount) > limit_val:
         raise HTTPException(
             status_code=429, 
             detail=f"Daily limit reached for {feature}. Used: {current_val}/{limit_val}. Requested: {amount}."
         )
-
-    # 5. Increment & Save
+ 
     data[col_name] = current_val + amount
-    
-    # Upsert handles both "Insert (New User)" and "Update (Existing)"
+     
     supabase.table("user_usage").upsert(data).execute()
     
     return True

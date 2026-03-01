@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   useUser,
   useAuth,
@@ -15,6 +15,7 @@ import {
 import UsageStats from "../components/UsageStats";
 import StudyCalendar from "../components/StudyCalendar/StudyCalendar";
 import Notes from "../components/Notes";
+import { AppContext } from "../context/AppContext";
 
 const Dashboard = () => {
   const { user } = useUser();
@@ -23,6 +24,7 @@ const Dashboard = () => {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+  const { files } = useContext(AppContext);
 
   const menuItems = [
     { id: "stats", label: "Usage Stats", icon: <BarChart3 size={18} /> },
@@ -32,11 +34,12 @@ const Dashboard = () => {
       icon: <CalendarIcon size={18} />,
     },
     { id: "notes", label: "My Notes", icon: <StickyNote size={18} /> },
+    { id: "files", label: "My Files", icon: <LayoutDashboard size={18} /> },
   ];
 
   const handleAddEvent = async (eventPayload) => {
     try {
-      const token = await getToken();
+      const token = await getToken(); 
       // Updated URL to match your new FastAPI prefix
       const response = await fetch(`${API_BASE_URL}/calendar/add-event`, {
         method: "POST",
