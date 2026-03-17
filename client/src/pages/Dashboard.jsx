@@ -28,18 +28,18 @@ const Dashboard = () => {
 
   const menuItems = [
     { id: "stats", label: "Usage Stats", icon: <BarChart3 size={18} /> },
-    {
-      id: "calendar",
-      label: "Study Calendar",
-      icon: <CalendarIcon size={18} />,
-    },
-    { id: "notes", label: "My Notes", icon: <StickyNote size={18} /> },
+    // {
+    //   id: "calendar",
+    //   label: "Study Calendar",
+    //   icon: <CalendarIcon size={18} />,
+    // },
+    // { id: "notes", label: "My Notes", icon: <StickyNote size={18} /> },
     { id: "files", label: "My Files", icon: <LayoutDashboard size={18} /> },
   ];
 
   const handleAddEvent = async (eventPayload) => {
     try {
-      const token = await getToken(); 
+      const token = await getToken();
       // Updated URL to match your new FastAPI prefix
       const response = await fetch(`${API_BASE_URL}/calendar/add-event`, {
         method: "POST",
@@ -208,7 +208,7 @@ const Dashboard = () => {
               </div>
             )}
 
-            {activeTab === "calendar" && (
+            {/* {activeTab === "calendar" && (
               <div className="animate-in fade-in zoom-in-95 duration-500 bg-white/5 border border-white/10 rounded-3xl p-1 min-h-[600px]">
                 <StudyCalendar
                   events={calendarEvents}
@@ -216,13 +216,13 @@ const Dashboard = () => {
                   onDeleteEvent={handleDeleteEvent}
                 />
               </div>
-            )}
-
+            )} */}
+            {/* 
             {activeTab === "notes" && (
               <div className="animate-in fade-in duration-500 h-[calc(100vh-100px)]">
                 <Notes />
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </main>

@@ -393,7 +393,7 @@ const Tutor = () => {
           <div className="text-center space-y-1">
             <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
               Made by{" "}
-              <span className="text-indigo-400 font-medium">Shridhan</span>
+              <span className="text-indigo-400 font-medium">CodeDev</span>
             </p>
             <p className="text-[10px] text-gray-600">
               © 2026 AI StudyMate Project
@@ -493,7 +493,7 @@ const Tutor = () => {
           <div className="text-center space-y-1">
             <p className="text-[11px] text-gray-400 flex items-center justify-center gap-1">
               Made by{" "}
-              <span className="text-indigo-400 font-medium">Shridhan</span>
+              <span className="text-indigo-400 font-medium">CodeDev</span>
             </p>
             <p className="text-[10px] text-gray-600">
               © 2026 AI StudyMate Project
@@ -689,7 +689,7 @@ const Tutor = () => {
               {/* --- LEFT SIDE ACTIONS --- */}
               <div className="flex items-center gap-1">
                 {/* 1. Attachment Button */}
-                <button
+                {/* <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
                   disabled={!selectedFile || loading}
@@ -697,7 +697,7 @@ const Tutor = () => {
                   title="Attach Image"
                 >
                   <Paperclip className="w-5 h-5" />
-                </button>
+                </button> */}
 
                 {/* Socratic Mode Toggle */}
                 <button
@@ -798,11 +798,10 @@ const Tutor = () => {
           if (pendingFile) {
             performActualSwitch(pendingFile);
             setPendingFile(null); // Reset
-          } 
-          else if (pendingRoute) { 
-            setSessionMsgs({}); 
+          } else if (pendingRoute) {
+            setSessionMsgs({});
             registerGuard(null);
- 
+
             navigate(pendingRoute);
             setPendingRoute(null); // Reset
           }

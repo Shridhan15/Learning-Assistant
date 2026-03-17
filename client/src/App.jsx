@@ -14,6 +14,7 @@ import ConceptTest from "./pages/ConceptTest";
 import ConceptSession from "./pages/ConceptSession";
 import { NavigationGuardProvider } from "./context/NavigationGuardContext";
 import Dashboard from "./pages/Dashboard";
+import LearningPaths from "./pages/LearningPaths";
 
 const ProtectedLayout = ({ children }) => {
   const { getToken, userId, isLoaded } = useAuth();
@@ -125,6 +126,21 @@ const App = () => {
             <SignedIn>
               <ProtectedLayout>
                 <Studio />
+              </ProtectedLayout>
+            </SignedIn>
+            <SignedOut>
+              <Navigate to="/" replace />
+            </SignedOut>
+          </>
+        }
+      />
+      <Route
+        path="/learningpaths"
+        element={
+          <>
+            <SignedIn>
+              <ProtectedLayout>
+                <LearningPaths />
               </ProtectedLayout>
             </SignedIn>
             <SignedOut>
