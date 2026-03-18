@@ -24,8 +24,8 @@ const Navbar = () => {
     { name: "Home", path: "/", icon: <Home className="w-4 h-4" /> },
     { name: "Quiz", path: "/quiz", icon: <BrainCircuit className="w-4 h-4" /> },
     { name: "AI Tutor", path: "/tutor", icon: <Bot className="w-4 h-4" /> },
-    // { name: "Studio", path: "/studio", icon: <Camera className="w-4 h-4" /> },
-    { name: "Learning Paths", path: "/learningpaths", icon: <LayoutDashboard className="w-4 h-4" /> },
+    { name: "Studio", path: "/studio", icon: <Camera className="w-4 h-4" /> },
+
     {
       name: "Dashboard",
       path: "/dashboard",

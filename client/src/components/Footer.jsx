@@ -16,7 +16,7 @@ const Footer = () => {
             <Heart className="w-4 h-4 text-rose-500 fill-rose-500 animate-pulse" />{" "}
             by
             <span className="text-indigo-400 font-bold hover:text-indigo-300 transition-colors cursor-pointer">
-              CodeDev
+              Shridhan
             </span>
           </p>
           <p className="text-slate-500 text-xs mt-1">

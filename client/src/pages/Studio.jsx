@@ -2,6 +2,7 @@ import React from "react";
 import { useUser } from "@clerk/clerk-react";
 import { FaBrain, FaChartPie, FaLock, FaBolt } from "react-icons/fa";
 import DailyPodcast from "../components/studio/DailyPodcast";
+import LearningPaths from "../components/studio/LearningPaths";
 
 const Studio = () => {
   const { user } = useUser();
@@ -20,7 +21,7 @@ const Studio = () => {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             {/* Left: Title & One-liner */}
             <div className="space-y-2 md:space-y-3">
-              <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight leading-tight">
+              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
                 The{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
                   Studio
@@ -51,6 +52,9 @@ const Studio = () => {
           {/* --- SECTION 1: PODCAST (Center Stage) --- */}
           <section className="w-full">
             <DailyPodcast />
+          </section>
+          <section className="w-full">
+            <LearningPaths />
           </section>
 
           {/* --- SECTION 2: TOOLS GRID --- */}

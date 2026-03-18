@@ -393,7 +393,7 @@ const Tutor = () => {
           <div className="text-center space-y-1">
             <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
               Made by{" "}
-              <span className="text-indigo-400 font-medium">CodeDev</span>
+              <span className="text-indigo-400 font-medium">Shridhan</span>
             </p>
             <p className="text-[10px] text-gray-600">
               © 2026 AI StudyMate Project
@@ -493,7 +493,7 @@ const Tutor = () => {
           <div className="text-center space-y-1">
             <p className="text-[11px] text-gray-400 flex items-center justify-center gap-1">
               Made by{" "}
-              <span className="text-indigo-400 font-medium">CodeDev</span>
+              <span className="text-indigo-400 font-medium">Shridhan</span>
             </p>
             <p className="text-[10px] text-gray-600">
               © 2026 AI StudyMate Project
