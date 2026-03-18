@@ -29,7 +29,7 @@ import { AppContext } from "../context/AppContext";
 const QuizAssistant = ({ getToken, userId }) => {
   const location = useLocation();
   const { user } = useUser();
-  const { files, fetchFiles } = useContext(AppContext);
+  const { files, fetchFiles, fetchResults } = useContext(AppContext);
 
   const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
@@ -128,7 +128,7 @@ const QuizAssistant = ({ getToken, userId }) => {
 
       // Short delay so user sees 100% before switching steps
       setTimeout(() => {
-        setFile({ name: data.filename });
+        setFile({ filename: data.filename });
 
         setIsUploading(false);
         setStep(2);
@@ -141,11 +141,11 @@ const QuizAssistant = ({ getToken, userId }) => {
   };
 
   const handleSelectFromLibrary = (filename) => {
-    if (file?.name !== filename) {
+    if (file?.filename !== filename) {
       setTopic("");
     }
 
-    setFile({ name: filename });
+    setFile({ filename: filename });
     setStep(2);
   };
 
@@ -158,6 +158,10 @@ const QuizAssistant = ({ getToken, userId }) => {
     const activeTopic = overrideTopic || topic;
 
     if (!activeTopic || !activeFile) return;
+    if (!activeTopic || !activeFile || !activeFile.filename) {
+      console.error("Missing file or topic information");
+      return;
+    }
 
     setIsLoading(true);
 
@@ -167,7 +171,7 @@ const QuizAssistant = ({ getToken, userId }) => {
       const data = await generateQuizApi(
         token,
         userId,
-        activeFile.name,
+        activeFile.filename,
         activeTopic,
         numQuestions,
         difficulty,
@@ -211,7 +215,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         console.log(" Auto-starting quiz for:", filename, topic);
 
         // Update local state for context
-        setFile({ name: filename });
+        setFile({ filename: filename });
         setTopic(topic);
         setIsLoading(true);
 
@@ -277,7 +281,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          filename: file.name,
+          filename: file.filename,
           topic: topic,
           score: calculatedScore,
           total_questions: quizData.length,
@@ -285,6 +289,9 @@ const QuizAssistant = ({ getToken, userId }) => {
           mistakes: mistakes,
         }),
       });
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await fetchResults();
       console.log("Quiz result saved to database!");
     } catch (error) {
       console.error("Failed to save history:", error);
@@ -367,14 +374,14 @@ const QuizAssistant = ({ getToken, userId }) => {
                     onClick={() => handleSelectFromLibrary(fname)}
                     className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
                     ${
-                      file?.name === fname
+                      file?.filename === fname
                         ? "bg-indigo-600/10 border-indigo-500/50 ring-1 ring-indigo-500/20"
                         : "bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10"
                     }`}
                   >
                     <div
                       className={`p-2 rounded-lg transition-colors ${
-                        file?.name === fname
+                        file?.filename === fname
                           ? "bg-indigo-500 text-white"
                           : "bg-slate-800 text-slate-400 group-hover:text-indigo-400"
                       }`}
@@ -384,7 +391,7 @@ const QuizAssistant = ({ getToken, userId }) => {
                     <div className="flex-1 min-w-0">
                       <h4
                         className={`text-sm font-medium truncate ${
-                          file?.name === fname
+                          file?.filename === fname
                             ? "text-indigo-100"
                             : "text-slate-300 group-hover:text-white"
                         }`}
@@ -392,7 +399,7 @@ const QuizAssistant = ({ getToken, userId }) => {
                         {getDisplayName(fname, user?.id)}
                       </h4>
                     </div>
-                    {file?.name === fname && (
+                    {file?.filename === fname && (
                       <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
                     )}
                   </button>

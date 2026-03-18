@@ -16,7 +16,7 @@ const AppContextProvider = ({ children }) => {
   const [groupedResults, setGroupedResults] = useState({});
   const [loading, setLoading] = useState(true);
   const [filesLoading, setFilesLoading] = useState(true);
- 
+
   const fetchFiles = async () => {
     try {
       const token = await getToken();
@@ -28,7 +28,7 @@ const AppContextProvider = ({ children }) => {
       console.error("Error fetching files:", error);
     }
   };
- 
+
   const fetchResults = async () => {
     try {
       const token = await getToken();
@@ -45,7 +45,7 @@ const AppContextProvider = ({ children }) => {
       console.error("Error fetching results:", error);
     }
   };
- 
+
   const deleteBook = async (filename) => {
     try {
       const token = await getToken();
@@ -65,14 +65,19 @@ const AppContextProvider = ({ children }) => {
       console.error("Delete failed:", error);
     }
   };
- 
+
   useEffect(() => {
     if (!isLoaded || !userId) return;
 
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchFiles(), fetchResults()]);
-      setLoading(false);
+      try { 
+        await Promise.all([fetchFiles(), fetchResults()]);
+      } catch (err) {
+        console.error("Initial load failed", err);
+      } finally { 
+        setLoading(false);
+      }
     };
 
     loadData();
@@ -81,6 +86,7 @@ const AppContextProvider = ({ children }) => {
   const value = {
     files,
     groupedResults,
+    fetchResults,
     loading,
     deleteBook,
     fetchFiles,

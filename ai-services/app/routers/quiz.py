@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Header,HTTPException
-
+import time
 router = APIRouter(
     prefix="/quiz",
     tags=["Quiz"]
@@ -169,14 +169,14 @@ async def save_quiz_result(result: QuizResultSchema, user_id: str = Header(...))
                     "question": m.question,
                     "wrong_answer": m.wrong_answer,
                     "correct_answer": m.correct_answer,
-                    "explanation": m.explanation,
-                    
+                    "explanation": m.explanation, 
                 }
                 for m in result.mistakes
             ]
             
             # Bulk Insert (Efficient)
             supabase.table("mistakes").insert(mistakes_data).execute()
+        
         
         return {"message": "Result and mistakes saved successfully"}
     
