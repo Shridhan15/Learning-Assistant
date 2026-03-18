@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 
@@ -23,6 +23,7 @@ import { getDisplayName } from "../utils/fileHelpers";
 import Typewriter from "../components/Typewriter";
 import { useNavigationGuard } from "../context/NavigationGuardContext";
 import SessionSummaryGate from "../components/SessionSummaryGate";
+import { AppContext } from "../context/AppContext";
 
 const Tutor = () => {
   const { getToken, userId } = useAuth();
@@ -31,8 +32,8 @@ const Tutor = () => {
   const { registerGuard } = useNavigationGuard();
   const navigate = useNavigate();
 
+  const { files, filesLoading } = useContext(AppContext);
   // State
-  const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -47,7 +48,6 @@ const Tutor = () => {
   // --- STATE SPLIT ---
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [filesLoading, setFilesLoading] = useState(true);
 
   // Auto-scroll
   const chatContainerRef = useRef(null);
@@ -115,38 +115,40 @@ const Tutor = () => {
   }, [messages, loading]);
 
   // Fetch Files
-  useEffect(() => {
-    const fetchFiles = async () => {
-      try {
-        const token = await getToken();
-        const response = await fetch(`${API_BASE_URL}/files/fetch-files`, {
-          headers: { Authorization: `Bearer ${token}`, "user-id": userId },
-        });
-        const data = await response.json();
-        setFiles(data.files || []);
-      } catch (error) {
-        console.error("Error fetching files:", error);
-      } finally {
-        setFilesLoading(false);
-      }
-    };
-    fetchFiles();
-  }, []);
 
-  // Load History
   const loadChatHistory = async (filename) => {
+    // 1. Guard against empty or object-type filenames
+    if (!filename || typeof filename !== "string") {
+      console.error("Invalid filename passed to loadChatHistory:", filename);
+      return;
+    }
+
     setHistoryLoading(true);
-    setMessages([]);
+    setMessages([]); // Clear previous chat immediately for better UX
+
     try {
       const token = await getToken();
+
+      // 2. Encode the filename to handle spaces/special characters
+      const encodedFile = encodeURIComponent(filename);
+
       const response = await fetch(
-        `${API_BASE_URL}/chat_history?filename=${filename}`,
+        `${API_BASE_URL}/chat_history?filename=${encodedFile}`,
         {
-          headers: { Authorization: `Bearer ${token}`, "user-id": userId },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "user-id": userId,
+          },
         },
       );
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+
       const data = await response.json();
 
+      // 3. Map history with safety check for null/undefined data.history
       const historyWithFlags = (data.history || []).map((msg) => ({
         ...msg,
         isNew: false,
@@ -155,10 +157,12 @@ const Tutor = () => {
       setMessages(historyWithFlags);
     } catch (error) {
       console.error("Error loading history:", error);
+      // Optional: set an error message in state to show the user
     } finally {
       setHistoryLoading(false);
     }
   };
+
 
   const toggleMode = (mode) => {
     if (mode === "socratic") {
@@ -305,6 +309,7 @@ const Tutor = () => {
 
   const performActualSwitch = (newFile) => {
     const oldFile = selectedFile; // Capture the file we are leaving
+    setIsMobileSidebarOpen(false);
 
     setSelectedFile(newFile);
     loadChatHistory(newFile);
@@ -349,20 +354,20 @@ const Tutor = () => {
               No books found
             </div>
           ) : (
-            files.map((file) => (
+            files.map((fileObj) => (
               <button
-                key={file}
-                onClick={() => handleFileSwitch(file)}
+                key={fileObj.id}
+                onClick={() => handleFileSwitch(fileObj.filename)}
                 className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
                 ${
-                  selectedFile === file
+                  selectedFile === fileObj.filename
                     ? "bg-indigo-600/10 border-indigo-500/50 ring-1 ring-indigo-500/20"
                     : "bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10"
                 }`}
               >
                 <div
                   className={`p-2 rounded-lg transition-colors ${
-                    selectedFile === file
+                    selectedFile === fileObj.filename
                       ? "bg-indigo-500 text-white"
                       : "bg-slate-800 text-slate-400 group-hover:text-indigo-400"
                   }`}
@@ -372,15 +377,15 @@ const Tutor = () => {
                 <div className="flex-1 min-w-0">
                   <h4
                     className={`text-sm font-medium truncate ${
-                      selectedFile === file
+                      selectedFile === fileObj.filename
                         ? "text-indigo-100"
                         : "text-slate-300 group-hover:text-white"
                     }`}
                   >
-                    {getDisplayName(file, user?.id)}
+                    {getDisplayName(fileObj.filename, user?.id)}
                   </h4>
                 </div>
-                {file === selectedFile && (
+                {fileObj.filename === selectedFile && (
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
                 )}
               </button>
@@ -451,11 +456,11 @@ const Tutor = () => {
           ) : (
             files.map((file) => (
               <button
-                key={file}
-                onClick={() => handleFileSwitch(file)}
+                key={file.id}
+                onClick={() => handleFileSwitch(file.filename)}
                 className={`cursor-pointer w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left border relative overflow-hidden
                 ${
-                  selectedFile === file
+                  selectedFile === file.filename
                     ? "bg-indigo-600/10 border-indigo-500/50 ring-1 ring-indigo-500/20"
                     : "bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10"
                 }`}
@@ -472,15 +477,15 @@ const Tutor = () => {
                 <div className="flex-1 min-w-0">
                   <h4
                     className={`text-sm font-medium truncate ${
-                      selectedFile === file
+                      selectedFile === file.filename
                         ? "text-indigo-100"
                         : "text-slate-300 group-hover:text-white"
                     }`}
                   >
-                    {getDisplayName(file, user?.id)}
+                    {getDisplayName(file.filename, user?.id)}
                   </h4>
                 </div>
-                {file === selectedFile && (
+                {file.filename === selectedFile && (
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
                 )}
               </button>

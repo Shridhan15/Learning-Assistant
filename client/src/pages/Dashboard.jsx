@@ -16,6 +16,7 @@ import UsageStats from "../components/UsageStats";
 import StudyCalendar from "../components/StudyCalendar/StudyCalendar";
 import Notes from "../components/Notes";
 import { AppContext } from "../context/AppContext";
+import Files from "../components/Files";
 
 const Dashboard = () => {
   const { user } = useUser();
@@ -24,7 +25,7 @@ const Dashboard = () => {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-  const { files } = useContext(AppContext);
+  const { files, deleteBook } = useContext(AppContext);
 
   const menuItems = [
     { id: "stats", label: "Usage Stats", icon: <BarChart3 size={18} /> },
@@ -221,6 +222,11 @@ const Dashboard = () => {
             {activeTab === "notes" && (
               <div className="animate-in fade-in duration-500 h-[calc(100vh-100px)]">
                 <Notes />
+              </div>
+            )}
+            {activeTab === "files" && (
+              <div className="animate-in fade-in duration-500 h-[calc(100vh-120px)]">
+                <Files files={files} onDelete={deleteBook} />
               </div>
             )}
           </div>

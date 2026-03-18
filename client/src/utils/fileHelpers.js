@@ -1,12 +1,20 @@
-export const getDisplayName = (filename, userId) => {
-    if (!filename) return "";
+export const getDisplayName = (input, userId) => {
+    // handle both string & object
+    const filename =
+        typeof input === "string"
+            ? input
+            : input?.filename;
 
-    // If we have a userId, remove it and the following underscore
+    if (!filename || typeof filename !== "string") {
+        return "Unknown File";
+    }
+
+    // Remove userId prefix
     if (userId && filename.includes(userId)) {
         return filename.split(userId + "_").pop();
     }
 
-    // Fallback: If it's a long UUID-like string before the name
+    // Fallback (remove prefix before first underscore)
     if (filename.includes("_")) {
         const parts = filename.split("_");
         if (parts.length > 1) return parts.slice(1).join("_");

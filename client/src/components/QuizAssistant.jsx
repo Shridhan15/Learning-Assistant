@@ -23,10 +23,13 @@ import QuizViewer from "./QuizViewer";
 import QuizResults from "./QuizResults";
 import { generateQuizApi } from "../services/quizService";
 import { getDisplayName } from "../utils/fileHelpers";
+import { useContext } from "react";
+import { AppContext } from "../context/AppContext";
 
 const QuizAssistant = ({ getToken, userId }) => {
   const location = useLocation();
   const { user } = useUser();
+  const { files, fetchFiles } = useContext(AppContext);
 
   const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
@@ -61,22 +64,10 @@ const QuizAssistant = ({ getToken, userId }) => {
     };
     return fetch(url, { ...options, headers });
   };
-
   useEffect(() => {
-    if (userId) {
-      fetchFiles();
-    }
-  }, [userId]);
-
-  const fetchFiles = async () => {
-    try {
-      const res = await authFetch(`${API_BASE_URL}/files/fetch-files`);
-      const data = await res.json();
-      setAvailableFiles(data.files || []);
-    } catch (err) {
-      console.error("Failed to load library:", err);
-    }
-  };
+    if (!files) return;
+    setAvailableFiles(files.map((f) => f.filename));
+  }, [files]);
 
   useEffect(() => {
     if (!userId) return;
@@ -133,11 +124,12 @@ const QuizAssistant = ({ getToken, userId }) => {
       // Success
       setProgress(100);
       setStatusMsg("Complete!");
+      await fetchFiles();
 
       // Short delay so user sees 100% before switching steps
       setTimeout(() => {
         setFile({ name: data.filename });
-        fetchFiles();
+
         setIsUploading(false);
         setStep(2);
       }, 500);
@@ -216,7 +208,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         autoStartLock.current = true;
 
         const { filename, topic } = location.state;
-        console.log("🚀 Auto-starting quiz for:", filename, topic);
+        console.log(" Auto-starting quiz for:", filename, topic);
 
         // Update local state for context
         setFile({ name: filename });
@@ -307,7 +299,6 @@ const QuizAssistant = ({ getToken, userId }) => {
     setTopic("");
     setUserAnswers({});
     setScore(0);
-    fetchFiles();
     setTakingQuiz(false);
   };
 
@@ -330,7 +321,7 @@ const QuizAssistant = ({ getToken, userId }) => {
           Analyzing{" "}
           <span className="text-indigo-400">
             {getDisplayName(location.state?.filename, user?.id) ||
-              getDisplayName(file?.name, user?.id)}
+              getDisplayName(file?.filename, user?.id)}
           </span>
         </p>
       </div>
@@ -512,7 +503,7 @@ const QuizAssistant = ({ getToken, userId }) => {
                       Active Document
                     </p>
                     <p className="text-white font-medium truncate text-sm">
-                      {getDisplayName(file?.name, user?.id)}
+                      {getDisplayName(file?.filename, user?.id)}
                     </p>
                   </div>
                   <button

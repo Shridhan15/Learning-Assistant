@@ -35,3 +35,18 @@ export const generateQuizApi = async (token, userId, filename, topic, numQuestio
         throw error;
     }
 };
+
+
+
+export const fetchResultsAPI = async (token, userId) => {
+    const res = await fetch(`${API_BASE_URL}/quiz/results`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "user-id": userId,
+        },
+    });
+
+    if (!res.ok) throw new Error("Failed to fetch results");
+
+    return res.json();
+};

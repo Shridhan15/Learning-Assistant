@@ -93,6 +93,37 @@ async def delete_book(
             short_filename = req.filename[len(prefix):]
             supabase.table("chat_history").delete().match({"user_id": user_id, "filename": short_filename}).execute()
 
+
+        # --- NOTES CLEANUP ---
+        try:
+            supabase.table("notes")\
+                .delete()\
+                .match({
+                    "user_id": user_id,
+                    "file_name": req.filename
+                })\
+                .execute()
+
+            print(" Notes deleted.")
+
+            # Handle short filename (same logic as chat_history)
+            prefix = f"{user_id}_"
+            if req.filename.startswith(prefix):
+                short_filename = req.filename[len(prefix):]
+
+                supabase.table("notes")\
+                    .delete()\
+                    .match({
+                        "user_id": user_id,
+                        "file_name": short_filename
+                    })\
+                    .execute()
+
+                print(" Short filename notes deleted.")
+
+        except Exception as notes_err:
+            print(f" Notes delete error: {notes_err}")
+        
         # --- 4. DECREMENT USAGE COUNTER (CRITICAL) ---
         try:
             row = supabase.table("user_usage").select("total_files_uploaded").eq("user_id", user_id).single().execute()
@@ -175,24 +206,23 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
 
 
 @router.get("/fetch-files")
-def list_files(user_id: str = Header(None)):  
-    """Fetches filenames belonging ONLY to the current user"""
-    
+def list_files(user_id: str = Header(None)):
+
     if not user_id:
         return {"files": []}
 
-    try: 
-        response = supabase.table("documents")\
-            .select("filename")\
-            .eq("user_id", user_id)\
+    try:
+        response = supabase.table("documents") \
+            .select("id, filename, created_at") \
+            .eq("user_id", user_id) \
             .execute()
-        
-        file_list = [item['filename'] for item in response.data]
-        return {"files": file_list}
-        
+
+        return {"files": response.data}   
+
     except Exception as e:
         print(f"Error fetching files: {e}")
         return {"files": []}
-    
+
+
   
  
