@@ -694,7 +694,7 @@ const Tutor = () => {
               {/* --- LEFT SIDE ACTIONS --- */}
               <div className="flex items-center gap-1">
                 {/* 1. Attachment Button */}
-                {/* <button
+                <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
                   disabled={!selectedFile || loading}
@@ -702,7 +702,7 @@ const Tutor = () => {
                   title="Attach Image"
                 >
                   <Paperclip className="w-5 h-5" />
-                </button> */}
+                </button>
 
                 {/* Socratic Mode Toggle */}
                 <button

@@ -5,7 +5,7 @@ from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
 import os
 import shutil
-
+import fitz
 
 from app.services.usage_service import check_and_increment
 from app.services.websocket_manager import manager
@@ -148,62 +148,81 @@ async def delete_book(
 
 
  
+MAX_PAGES = 30
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB limit
+
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
+    path = None 
     try:
-        #  Create a Unique Filename
-        # Replace spaces to avoid URL encoding issues
-        await check_and_increment( user_id, "upload", amount=1)
+        # 1. Size Check
+        file.file.seek(0, 2)
+        size = file.file.tell()
+        file.file.seek(0)
+        
+        if size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="File too large. Maximum 10MB allowed.")
+
         clean_name = file.filename.replace(" ", "_")
         unique_filename = f"{user_id}_{clean_name}"
-        
-        #  Update Path to use Unique Name  
         path = f"{UPLOAD_DIR}/{unique_filename}"
-        
+
+        # 2. Save Temporary File
         with open(path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        #  Check if THIS unique file already exists
-        # We now check against 'unique_filename' instead of raw 'file.filename'
-        existing = supabase.table("documents").select("filename")\
-            .eq("filename", unique_filename)\
-            .execute()
+        # 3. Page Count Check (Logic Fixed)
+        page_count = 0
+        try:
+            with fitz.open(path) as doc:
+                page_count = len(doc)
+        except Exception:
+            # Only raises this if the file is actually corrupt/not a PDF
+            raise HTTPException(status_code=400, detail="Invalid PDF file format.")
+
+        # Check limit OUTSIDE the try/except so it doesn't get caught by the generic error handler
+        if page_count > MAX_PAGES:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"PDF exceeds {MAX_PAGES} page limit. This file has {page_count} pages."
+            )
+ 
+        
+
+        # 5. Database & Pinecone
+        existing = supabase.table("documents").select("filename").eq("filename", unique_filename).execute()
             
         if not existing.data: 
+            await check_and_increment(user_id, "upload", amount=1)
             documents = load_pdf(path)
             chunks = chunk_text(documents)
-
 
             async def progress_reporter(current, total, status):
                 await manager.send_progress(user_id, current, total, status)
             
-            # Pass the UNIQUE filename to Pinecone
-            await store_in_pinecone(chunks, unique_filename, user_id,progress_callback=progress_reporter)
+            await store_in_pinecone(chunks, unique_filename, user_id, progress_callback=progress_reporter)
             
-            # Save the UNIQUE filename to Supabase
             supabase.table("documents").insert({
                 "filename": unique_filename, 
                 "user_id": user_id
             }).execute()
             
             message = "Uploaded and processed successfully"
+            
         else:
             message = "File already exists, skipping processing."
-        
-        # Clean up temp file
-        if os.path.exists(path):
-            os.remove(path)
 
-        return {"message": message, "filename": unique_filename}
+        return {"message": message, "filename": unique_filename, "pages": page_count}
 
+    except HTTPException as he:
+        # This preserves your custom detail messages (30 pages, etc.)
+        raise he
     except Exception as e:
-        print(f"Error: {e}")
-        # Clean up if error occurs
-        if 'path' in locals() and os.path.exists(path):
-             os.remove(path)
-        raise HTTPException(status_code=500, detail=str(e))   
-    
-
+        print(f"Internal Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if path and os.path.exists(path):
+            os.remove(path)
 
 @router.get("/fetch-files")
 def list_files(user_id: str = Header(None)):

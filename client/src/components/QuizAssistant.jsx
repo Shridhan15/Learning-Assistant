@@ -97,7 +97,12 @@ const QuizAssistant = ({ getToken, userId }) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
 
-    // Reset Progress State
+    // Optional: Client-side size pre-check to save time
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      alert("File is too large (Max 10MB)");
+      return;
+    }
+
     setIsUploading(true);
     setProgress(0);
     setStatusMsg("Starting upload...");
@@ -112,31 +117,36 @@ const QuizAssistant = ({ getToken, userId }) => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "user-id": userId, // This triggers the backend to send WS messages to this ID
+          "user-id": userId,
         },
         body: formData,
       });
 
-      if (!response.ok) throw new Error("Upload failed");
+      // Handle non-200 responses
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        // This pulls the "detail" from your FastAPI HTTPException
+        const errorMessage = errorData.detail || "Upload failed";
+        throw new Error(errorMessage);
+      }
 
       const data = await response.json();
 
-      // Success
       setProgress(100);
       setStatusMsg("Complete!");
       await fetchFiles();
 
-      // Short delay so user sees 100% before switching steps
       setTimeout(() => {
         setFile({ filename: data.filename });
-
         setIsUploading(false);
         setStep(2);
       }, 500);
     } catch (error) {
-      console.error(error);
-      alert("Failed to upload PDF.");
+      console.error("Upload Error:", error);
+      // This will now show the specific reason (e.g., "PDF exceeds 30 page limit")
+      alert(`Upload Error: ${error.message}`);
       setIsUploading(false);
+      setStatusMsg("Upload failed.");
     }
   };
 
