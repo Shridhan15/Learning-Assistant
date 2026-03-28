@@ -41,64 +41,93 @@ StudyMate/
 
 
 
- Environment Configuration
-Backend Setup (ai-services/example.env)
-To run the AI services, populate your .env with these keys:
 
-Code snippet
+## Environment Configuration
+
+###  Backend Setup (`ai-services/.env`)
+
+Create a `.env` file inside the `ai-services` folder and add the following:
+
+```env
+# ==============================
 # AI & LLM Providers
+# ==============================
 GROQ_API_KEY=your_groq_key
 HUGGINGFACEHUB_API_TOKEN=your_hf_token
 
+# ==============================
 # Vector & Relational Databases
+# ==============================
 PINECONE_API_KEY=your_pinecone_key
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_anon_key
-
-## Azure OpenAI Services
+ 
+# Azure OpenAI Services
+ 
 AZURE_OPENAI_ENDPOINT=your_endpoint
 AZURE_OPENAI_API_KEY=your_azure_openai_key
 AZURE_OPENAI_DEPLOYMENT=your_deployment_name
 OPENAI_API_VERSION=2024-02-15-preview
 
+ 
 # Azure Speech Services (Coach & Podcasts)
+ 
 AZURE_SPEECH_KEY=your_speech_key
 AZURE_SPEECH_REGION=your_speech_region
-Frontend Setup (client/example.env)
-Code snippet
+
+ Frontend Setup (client/.env)
+
+Create a .env file inside the client folder:
+
 VITE_CLERK_PUBLISHABLE_KEY=your_clerk_key
 VITE_API_URL=http://localhost:8000
-
-## Tech Stack
-Frontend: React (Vite), Tailwind CSS, Clerk (Auth), Recharts, Lucide React.
-
-Backend: FastAPI (Python), Pydantic.
-
-AI / LLM: Llama 3 (via Groq), Azure OpenAI, Hugging Face.
-
-Vector DB: Pinecone (Semantic Search/Context).
-
-Database: Supabase (PostgreSQL).
-
-Voice/Audio: Microsoft Azure Speech Services (STT/TTS).
-
-## Getting Started
-Clone the Repository:
-
-Bash
+Tech Stack
+Frontend
+React (Vite)
+Tailwind CSS
+Clerk (Authentication)
+Recharts
+Lucide React
+ Backend
+FastAPI (Python)
+Pydantic
+ AI / LLM
+Llama 3 (via Groq)
+Azure OpenAI
+Hugging Face
+ Vector Database
+Pinecone (Semantic Search / Context Retrieval)
+ Database
+Supabase (PostgreSQL)
+ Voice / Audio
+Microsoft Azure Speech Services (STT / TTS)
+ Getting Started
+1️ Clone the Repository
 git clone https://github.com/Shridhan15/Learning-Assistant.git
 
-Backend Installation:
-
-Bash
+2️ Backend Setup
 cd ai-services
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-Frontend Installation:
 
-Bash
+# Create virtual environment
+python -m venv venv
+
+# Activate environment
+# Mac/Linux
+source venv/bin/activate
+
+# Windows
+venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run server
+uvicorn app.main:app --reload
+3️ Frontend Setup
 cd client
+
+# Install dependencies
 npm install
+
+# Start development server
 npm run dev
