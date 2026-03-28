@@ -37,6 +37,7 @@ StudyMate/
 │   ├── example.env      # Template for Frontend keys (Clerk, etc.)
 │   └── package.json     # Node dependencies
 └── README.md
+```
 
 
 
@@ -54,7 +55,7 @@ PINECONE_API_KEY=your_pinecone_key
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_anon_key
 
-# Azure OpenAI Services
+## Azure OpenAI Services
 AZURE_OPENAI_ENDPOINT=your_endpoint
 AZURE_OPENAI_API_KEY=your_azure_openai_key
 AZURE_OPENAI_DEPLOYMENT=your_deployment_name
@@ -67,7 +68,8 @@ Frontend Setup (client/example.env)
 Code snippet
 VITE_CLERK_PUBLISHABLE_KEY=your_clerk_key
 VITE_API_URL=http://localhost:8000
-🛠 Tech Stack
+
+## Tech Stack
 Frontend: React (Vite), Tailwind CSS, Clerk (Auth), Recharts, Lucide React.
 
 Backend: FastAPI (Python), Pydantic.
@@ -80,11 +82,12 @@ Database: Supabase (PostgreSQL).
 
 Voice/Audio: Microsoft Azure Speech Services (STT/TTS).
 
-Getting Started
+## Getting Started
 Clone the Repository:
 
 Bash
-git clone [https://github.com/shridhansuman/studymate.git](https://github.com/shridhansuman/studymate.git)
+git clone https://github.com/Shridhan15/Learning-Assistant.git
+
 Backend Installation:
 
 Bash
