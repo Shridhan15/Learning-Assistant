@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { fetchFilesAPI, deleteBookAPI } from "../services/fileService";
 import { fetchResultsAPI } from "../services/quizService";
+import { toast } from "react-toastify";
 
 export const AppContext = createContext();
 
@@ -45,24 +46,52 @@ const AppContextProvider = ({ children }) => {
       console.error("Error fetching results:", error);
     }
   };
+ 
 
   const deleteBook = async (filename) => {
+    // 1. Get confirmation so users don't accidentally lose their data
+    if (
+      !window.confirm(
+        "Are you sure? This will delete all notes, quizzes, and chat history for this book.",
+      )
+    ) {
+      return;
+    }
+
     try {
       const token = await getToken();
 
-      await deleteBookAPI(token, API_BASE_URL, userId, filename);
+      // 2. Wrap the API call in a toast promise
+      await toast.promise(
+        deleteBookAPI(token, API_BASE_URL, userId, filename),
+        {
+          pending: "Cleaning up all book data...",
+          success: {
+            render({ data }) {
+              // This displays your backend message: "Book deleted and usage quota restored"
+              return data.message || "Book deleted successfully!";
+            },
+          },
+          error: {
+            render({ error }) {
+              // This displays "Delete failed" or your custom detail from the backend
+              return `Error: ${error.message}`;
+            },
+          },
+        },
+      );
 
-      // update files
+      // 3. Update local state only AFTER the API succeeds
       setFiles((prev) => prev.filter((file) => file.filename !== filename));
 
-      // update results
       setGroupedResults((prev) => {
         const newResults = { ...prev };
         delete newResults[filename];
         return newResults;
       });
     } catch (error) {
-      console.error("Delete failed:", error);
+      // Error is already handled by toast.promise, but we log it for debugging
+      console.error("Delete cleanup failed:", error);
     }
   };
 
@@ -71,11 +100,11 @@ const AppContextProvider = ({ children }) => {
 
     const loadData = async () => {
       setLoading(true);
-      try { 
+      try {
         await Promise.all([fetchFiles(), fetchResults()]);
       } catch (err) {
         console.error("Initial load failed", err);
-      } finally { 
+      } finally {
         setLoading(false);
       }
     };

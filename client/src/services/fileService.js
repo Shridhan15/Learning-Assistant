@@ -25,7 +25,11 @@ export const deleteBookAPI = async (token, API_BASE_URL, userId, filename) => {
         body: JSON.stringify({ filename }),
     });
 
-    if (!res.ok) throw new Error("Delete failed");
+    if (!res.ok) {
+        // Try to get backend error detail
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Delete failed");
+    }
 
     return res.json();
 };

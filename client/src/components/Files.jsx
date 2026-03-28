@@ -15,10 +15,7 @@ const Files = ({ files = [], onDelete }) => {
     });
   };
 
-  const handleDeleteClick = async (filename, displayName) => {
-    const confirmDelete = window.confirm(`Delete "${displayName}"?`);
-
-    if (!confirmDelete) return;
+  const handleDeleteClick = async (filename, displayName) => { 
 
     setDeletingId(filename);
 

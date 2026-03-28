@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { Loader2, Save, X, FileText, } from "lucide-react";
+import { Loader2, Save, X, FileText } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 import { useAuth } from "@clerk/clerk-react";
-import toast from "react-hot-toast";
+import { toast } from "react-toastify";
 const SessionSummaryGate = ({
   open,
-  onClose, 
+  onClose,
   sessionMsgs,
   activeFile,
   API_BASE_URL,
@@ -54,17 +54,12 @@ const SessionSummaryGate = ({
 
   const handleSaveSummary = async () => {
     console.log("Button Clicked!");
-    try {
-      setLoading(true);
-      const token = await getToken();
-      console.log("2. Token received:", !!token);
-      console.log("3. Data being sent:", {
-        filename: activeFile,
-        title: summaryData?.title,
-        userId: userId,
-      });
 
-      const response = await fetch(`${API_BASE_URL}/save-summary`, {
+    try {
+      const token = await getToken();
+
+      // 1. Define the Save Promise
+      const savePromise = fetch(`${API_BASE_URL}/save-summary`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -77,22 +72,30 @@ const SessionSummaryGate = ({
           key_points: summaryData.key_points,
           struggle_area: summaryData.struggle_area,
         }),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.detail || "Failed to save summary");
+        }
+        return res.json();
       });
-      console.log("4. Response status:", response.status);
 
-      if (response.ok) {
-        console.log("Summary saved successfully!");
-        handleFinalize(); // Close the modal and continue navigation
-      } else {
-        const errorData = await response.json();
-        console.error("6. Server Error Data:", errorData);
-        throw new Error("Failed to save");
-      }
+      // 2. Trigger the Toast
+      await toast.promise(savePromise, {
+        pending: "Saving your study summary...",
+        success: "Summary saved to notes successfully! ",
+        error: {
+          render({ error }) {
+            return `Error: ${error.message}`;
+          },
+        },
+      });
+
+      // 3. Success Actions
+      handleFinalize(); // Close the modal and continue navigation
     } catch (err) {
-      console.error("7. Catch Block caught error:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      console.error("Save Summary failed:", err);
+      // err is handled by toast.promise, but you can still log it for debugging
     }
   };
 

@@ -17,6 +17,7 @@ import StudyCalendar from "../components/StudyCalendar/StudyCalendar";
 import Notes from "../components/Notes";
 import { AppContext } from "../context/AppContext";
 import Files from "../components/Files";
+import { toast } from "react-toastify";
 
 const Dashboard = () => {
   const { user } = useUser();
@@ -41,8 +42,9 @@ const Dashboard = () => {
   const handleAddEvent = async (eventPayload) => {
     try {
       const token = await getToken();
-      // Updated URL to match your new FastAPI prefix
-      const response = await fetch(`${API_BASE_URL}/calendar/add-event`, {
+
+      // We wrap the fetch in a promise for the toast
+      const saveEventPromise = fetch(`${API_BASE_URL}/calendar/add-event`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -50,16 +52,31 @@ const Dashboard = () => {
           "user-id": userId,
         },
         body: JSON.stringify(eventPayload),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.detail || "Failed to save event");
+        }
+        return res.json();
       });
 
-      if (response.ok) {
-        fetchCalendarEvents();
-      } else {
-        const errorData = await response.json();
-        console.error("Server error:", errorData.detail);
-      }
+      // Show the toast during the process
+      await toast.promise(saveEventPromise, {
+        pending: "Adding to your study calendar...",
+        success: "Event added successfully!",
+        error: {
+          render({ error }) {
+            return `Error: ${error.message}`;
+          },
+        },
+      });
+
+      fetchCalendarEvents();
+
+      // setShowModal(false);
     } catch (error) {
       console.error("Error saving event:", error);
+      // Error is handled by toast.promise
     }
   };
 
@@ -87,12 +104,14 @@ const Dashboard = () => {
   }, [userId]);
 
   const handleDeleteEvent = async (eventId) => {
-    // Optional: Add a confirmation dialog
+    // 1. Keep the confirmation for safety
     if (!window.confirm("Are you sure you want to delete this event?")) return;
 
     try {
       const token = await getToken();
-      const response = await fetch(
+
+      // 2. Define the deletion promise
+      const deletePromise = fetch(
         `${API_BASE_URL}/calendar/delete-event/${eventId}`,
         {
           method: "DELETE",
@@ -101,15 +120,30 @@ const Dashboard = () => {
             "user-id": userId,
           },
         },
-      );
+      ).then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.detail || "Failed to delete event");
+        }
+        return res.json();
+      });
 
-      if (response.ok) {
-        fetchCalendarEvents();
-      } else {
-        console.error("Failed to delete event");
-      }
+      // 3. Fire the toast
+      await toast.promise(deletePromise, {
+        pending: "Removing event from calendar...",
+        success: "Event deleted!",
+        error: {
+          render({ error }) {
+            return `Error: ${error.message}`;
+          },
+        },
+      });
+
+      // 4. Refresh the calendar view
+      fetchCalendarEvents();
     } catch (error) {
       console.error("Error deleting event:", error);
+      // error is already handled by toast.promise
     }
   };
 

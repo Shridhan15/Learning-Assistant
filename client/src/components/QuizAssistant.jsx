@@ -16,6 +16,7 @@ import {
   ArrowRight,
   ChevronDown,
 } from "lucide-react";
+import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 
@@ -127,6 +128,7 @@ const QuizAssistant = ({ getToken, userId }) => {
         const errorData = await response.json().catch(() => ({}));
         // This pulls the "detail" from your FastAPI HTTPException
         const errorMessage = errorData.detail || "Upload failed";
+        toast.error(errorMessage);
         throw new Error(errorMessage);
       }
 
@@ -134,6 +136,11 @@ const QuizAssistant = ({ getToken, userId }) => {
 
       setProgress(100);
       setStatusMsg("Complete!");
+      if (data.message.includes("already exists")) {
+        toast.info("File already exists. Redirecting...");
+      } else {
+        toast.success("File processed successfully!");
+      }
       await fetchFiles();
 
       setTimeout(() => {
@@ -143,8 +150,7 @@ const QuizAssistant = ({ getToken, userId }) => {
       }, 500);
     } catch (error) {
       console.error("Upload Error:", error);
-      // This will now show the specific reason (e.g., "PDF exceeds 30 page limit")
-      alert(`Upload Error: ${error.message}`);
+      // This will now show the specific reason (e.g., "PDF exceeds 30 page limit") 
       setIsUploading(false);
       setStatusMsg("Upload failed.");
     }
