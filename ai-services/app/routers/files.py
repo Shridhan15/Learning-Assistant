@@ -5,11 +5,12 @@ from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
 import os
 import shutil
-import fitz
+import pymupdf
 
 from app.services.usage_service import check_and_increment
 from app.services.websocket_manager import manager
 from app.rag import load_pdf, chunk_text, store_in_pinecone, retrieve
+from app.utils.security import  sanitize_chunks
 
 import asyncio
 
@@ -155,11 +156,11 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB limit
 async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
     path = None 
     try:
-        # 1. Size Check
-        file.file.seek(0, 2)
-        size = file.file.tell()
-        file.file.seek(0)
+        # 1. Safely read file bytes asynchronously
+        content = await file.read()
+        size = len(content)
         
+        # 2. Size Check
         if size > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail="File too large. Maximum 10MB allowed.")
 
@@ -167,41 +168,56 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
         unique_filename = f"{user_id}_{clean_name}"
         path = f"{UPLOAD_DIR}/{unique_filename}"
 
-        # 2. Save Temporary File
+        # 3. Save Temporary File from memory content
         with open(path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(content)
 
-        # 3. Page Count Check (Logic Fixed)
+        # 4. Page Count Check via PyMuPDF
         page_count = 0
         try:
-            with fitz.open(path) as doc:
+            with pymupdf.open(path) as doc:
                 page_count = len(doc)
-        except Exception:
-            # Only raises this if the file is actually corrupt/not a PDF
+        except Exception as parse_error:
+            # Prints the actual file issue to your terminal logs for easier debugging
+            print(f"PDF Parsing Exception: {parse_error}")
             raise HTTPException(status_code=400, detail="Invalid PDF file format.")
 
-        # Check limit OUTSIDE the try/except so it doesn't get caught by the generic error handler
         if page_count > MAX_PAGES:
             raise HTTPException(
                 status_code=400, 
                 detail=f"PDF exceeds {MAX_PAGES} page limit. This file has {page_count} pages."
             )
  
-        
-
-        # 5. Database & Pinecone
+        # 5. Database & Pinecone Check
         existing = supabase.table("documents").select("filename").eq("filename", unique_filename).execute()
             
         if not existing.data: 
+            # Process quota metrics
             await check_and_increment(user_id, "upload", amount=1)
+            
+            # Load and segment text
             documents = load_pdf(path)
             chunks = chunk_text(documents)
 
+            # --- SECURITY SCANNING FOR INDIRECT PROMPT INJECTIONS ---
+            safe_chunks = sanitize_chunks(chunks)
+            
+            # Rejects the upload entirely if the file contains only malicious injections
+            if not safe_chunks and chunks:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Upload rejected: Malicious instructions detected in document."
+                )
+            # --------------------------------------------------------
+
+            # Progress update wrapper
             async def progress_reporter(current, total, status):
                 await manager.send_progress(user_id, current, total, status)
             
-            await store_in_pinecone(chunks, unique_filename, user_id, progress_callback=progress_reporter)
+            # Store only validated, non-injected chunks to vector storage
+            await store_in_pinecone(safe_chunks, unique_filename, user_id, progress_callback=progress_reporter)
             
+            # Log document relationship metadata
             supabase.table("documents").insert({
                 "filename": unique_filename, 
                 "user_id": user_id
@@ -215,14 +231,16 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
         return {"message": message, "filename": unique_filename, "pages": page_count}
 
     except HTTPException as he:
-        # This preserves your custom detail messages (30 pages, etc.)
+        # Forward operational control errors transparently
         raise he
     except Exception as e:
         print(f"Internal Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
+        # Guarantee local temporary files are cleaned up to prevent server memory bloat
         if path and os.path.exists(path):
             os.remove(path)
+
 
 @router.get("/fetch-files")
 def list_files(user_id: str = Header(None)):
