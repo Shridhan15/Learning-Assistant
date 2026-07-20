@@ -11,14 +11,28 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_huggingface import HuggingFaceEndpointEmbeddings  
 from langchain_openai import AzureOpenAIEmbeddings
+import cohere
+
+
+
+load_dotenv()
+
+# Safely fetch the key
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+
+if not COHERE_API_KEY:
+    raise ValueError("COHERE_API_KEY is missing from environment variables!")
+
+# Initialize the Cohere client
+co = cohere.Client(COHERE_API_KEY)
+logger = logging.getLogger(__name__)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-load_dotenv()
+ 
  
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 INDEX_NAME = "learning-assistant" 
@@ -137,64 +151,65 @@ async def store_in_pinecone(chunks, filename, user_id, progress_callback=None):
     logger.info("Upload complete")
 
  
-def retrieve(question: str, filename: str, user_id: str, k: int = 5) -> List[Dict]:
+def retrieve(question: str, filename: str, user_id: str, k: int = 15) -> List[Dict]:
     """
-    Retrieves top-k relevant chunks from Pinecone.
-    - Multi-tenant safe
-    - No hard similarity threshold
-    - Explicit score sorting
-    - Returns top 3 chunks
+    Retrieves top 15 chunks from Pinecone, then uses Cohere to re-rank 
+    and return the true top 3 most relevant chunks.
     """
-
     try:
         index = pc.Index(INDEX_NAME)
-
         query_vector = embeddings.embed_query(question)
-
-        query_filter = {
-            "filename": filename,
-            "user_id": user_id
-        }
-
+        
+        # 1. Fetch a broader net of chunks from Pinecone (k=15)
         results = index.query(
             vector=query_vector,
-            top_k=k,
+            top_k=k, 
             include_metadata=True,
-            filter=query_filter
+            filter={"filename": filename, "user_id": user_id}
         )
 
         matches = results.get("matches", [])
-
         if not matches:
             logger.info("No matches found for query: %s", question)
             return []
 
-        logger.info("Total matches returned by Pinecone: %d", len(matches)) 
-        sorted_matches = sorted(
-            matches,
-            key=lambda x: x.get("score", 0),
-            reverse=True
+        # 2. Extract the texts to send to the re-ranker
+        # We also keep a dictionary mapping text -> original metadata so we don't lose page numbers
+        text_to_metadata = {}
+        docs_to_rerank = []
+        
+        for match in matches:
+            text = match.get("metadata", {}).get("text", "")
+            if text:
+                docs_to_rerank.append(text)
+                text_to_metadata[text] = match.get("metadata", {})
+
+        if not docs_to_rerank:
+            return []
+
+        # 3. Pass the texts to Cohere for Re-ranking
+        rerank_results = co.rerank(
+            model="rerank-english-v3.0",
+            query=question,
+            documents=docs_to_rerank,
+            top_n=3, # Tell Cohere to only return the absolute best 3
+            return_documents=True
         )
- 
-        top_matches = sorted_matches[:3]
 
+        # 4. Format the final output exactly as your app expects it
         retrieved_chunks = []
-
-        for match in top_matches:
-            metadata = match.get("metadata", {})
-
+        for result in rerank_results.results:
+            reranked_text = result.document.text
+            original_metadata = text_to_metadata.get(reranked_text, {})
+            
             retrieved_chunks.append({
-                "text": metadata.get("text", ""),
-                "page": metadata.get("page"),
-                "score": match.get("score", 0)
+                "text": reranked_text,
+                "page": original_metadata.get("page"),
+                "score": result.relevance_score # This is the new, more accurate score!
             })
 
-        logger.info(
-            "Returning top %d chunks for user %s",
-            len(retrieved_chunks),
-            user_id
-        )
-
+        logger.info(f"Successfully re-ranked and returned top 3 chunks for {user_id}")
+        logger.info(f"RETRIEVED CHUNKS :{retrieved_chunks}")
         return retrieved_chunks
 
     except Exception as e:
