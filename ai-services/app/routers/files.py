@@ -193,14 +193,13 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
             
         if not existing.data: 
             # Process quota metrics
-            await check_and_increment(user_id, "upload", amount=1)
             
             # Load and segment text
             documents = load_pdf(path)
             chunks = chunk_text(documents)
 
-            # --- SECURITY SCANNING FOR INDIRECT PROMPT INJECTIONS ---
             safe_chunks = sanitize_chunks(chunks)
+            # --- SECURITY SCANNING FOR INDIRECT PROMPT INJECTIONS ---
             
             # Rejects the upload entirely if the file contains only malicious injections
             if not safe_chunks and chunks:
@@ -210,6 +209,7 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Header(...)):
                 )
             # --------------------------------------------------------
 
+            await check_and_increment(user_id, "upload", amount=1)
             # Progress update wrapper
             async def progress_reporter(current, total, status):
                 await manager.send_progress(user_id, current, total, status)

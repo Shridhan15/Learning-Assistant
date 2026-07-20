@@ -31,6 +31,7 @@ const Tutor = () => {
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
   const { registerGuard } = useNavigationGuard();
   const navigate = useNavigate();
+  const MAX_LENGTH = 100;
 
   const { files, filesLoading } = useContext(AppContext);
   // State
@@ -163,7 +164,6 @@ const Tutor = () => {
     }
   };
 
-
   const toggleMode = (mode) => {
     if (mode === "socratic") {
       setIsSocratic(!isSocratic);
@@ -237,6 +237,26 @@ const Tutor = () => {
         }),
       });
 
+      if (!response.ok) {
+        // Parse the error from FastAPI
+        const errorData = await response.json();
+        const errorMessage = errorData.detail || "Something went wrong.";
+
+        // ---- ERROR MESSAGE OBJECT ----
+        const uiErrorMsg = {
+          role: "assistant", // keep consistent with your other AI messages
+          content: `⚠️ Error: ${errorMessage}`,
+          isNew: true,
+          isError: true, // if your UI uses this flag to color the message red
+        };
+
+        // Update UI using your existing state function
+        setMessages((prev) => [...prev, uiErrorMsg]);
+
+        setLoading(false); // Make sure to stop loading!
+        return;
+      }
+
       const data = await response.json();
 
       // ---- AI MESSAGE OBJECTS ----
@@ -271,7 +291,10 @@ const Tutor = () => {
       };
 
       setMessages((prev) => [...prev, errorMsg]);
-      setSessionMsgs((prev) => [...prev, errorMsg]);
+      setSessionMsgs((prev) => ({
+        ...prev,
+        [currentFile]: [...(prev[currentFile] || []), errorMsg],
+      }));
     } finally {
       setLoading(false);
     }
@@ -531,7 +554,7 @@ const Tutor = () => {
                 </h3>
                 <div className="flex items-center gap-1.5 opacity-60">
                   <Book className="w-3 h-3 text-indigo-400" />
-                  <p className="text-xs text-gray-300 truncate max-w-[140px] sm:max-w-[200px]">
+                  <p className="text-xs text-gray-300 truncate max-w-35 sm:max-w-50">
                     {getDisplayName(selectedFile, user?.id)}
                   </p>
                 </div>
@@ -742,22 +765,37 @@ const Tutor = () => {
               </div>
 
               {/* Text Input */}
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={!selectedFile || loading}
-                placeholder={
-                  selectedFile
-                    ? isSocratic
-                      ? "Ask a question..."
-                      : isFeynman
-                        ? "Explain a concept to check your understanding..."
-                        : "Ask a question..."
-                    : "Select a file to start chatting"
-                }
-                className="flex-1 bg-gray-900/70 text-white rounded-lg border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 placeholder:text-gray-500 shadow-inner min-w-0"
-              />
+              <div className="relative flex-1 flex items-center min-w-0">
+                <input
+                  type="text"
+                  value={input}
+                  maxLength={MAX_LENGTH} // 1. Naturally prevents typing beyond max
+                  onChange={(e) => setInput(e.target.value)}
+                  disabled={!selectedFile || loading}
+                  placeholder={
+                    selectedFile
+                      ? isSocratic
+                        ? "Ask a question..."
+                        : isFeynman
+                          ? "Explain a concept to check your understanding..."
+                          : "Ask a question..."
+                      : "Select a file to start chatting"
+                  }
+                  // 2. Added 'pr-16' (padding-right) so text doesn't overlap the counter
+                  className="w-full bg-gray-900/70 text-white rounded-lg border border-white/10 pl-4 pr-16 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 placeholder:text-gray-500 shadow-inner"
+                />
+
+                {/* 3. The Character Counter overlay */}
+                <div
+                  className={`absolute right-3 text-xs transition-colors ${
+                    input.length >= MAX_LENGTH
+                      ? "text-red-400 font-medium"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {input.length}/{MAX_LENGTH}
+                </div>
+              </div>
 
               {/* Send Button */}
               <button
