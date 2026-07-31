@@ -67,6 +67,7 @@ workflow.add_conditional_edges(
 # Re-converge to persistence
 workflow.add_edge("generation", "persistence")
 workflow.add_edge("small_talk", "persistence")
+workflow.add_edge("out_of_scope_handler", "persistence")
 workflow.add_edge("refusal", "persistence")
 workflow.add_edge("persistence", END)
 
