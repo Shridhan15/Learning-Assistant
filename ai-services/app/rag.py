@@ -150,11 +150,18 @@ async def store_in_pinecone(chunks, filename, user_id, progress_callback=None):
 
     logger.info("Upload complete")
 
- 
-def retrieve(question: str, filename: str, user_id: str, k: int = 15) -> List[Dict]:
+  
+
+def retrieve(
+    question: str, 
+    filename: str, 
+    user_id: str, 
+    k: int = 15, 
+    score_threshold: float = 0.35  # <--- Added configurable threshold
+) -> List[Dict]:
     """
-    Retrieves top 15 chunks from Pinecone, then uses Cohere to re-rank 
-    and return the true top 3 most relevant chunks.
+    Retrieves top 15 chunks from Pinecone, uses Cohere to re-rank, 
+    and filters out chunks below a relevance score threshold.
     """
     try:
         index = pc.Index(INDEX_NAME)
@@ -174,7 +181,6 @@ def retrieve(question: str, filename: str, user_id: str, k: int = 15) -> List[Di
             return []
 
         # 2. Extract the texts to send to the re-ranker
-        # We also keep a dictionary mapping text -> original metadata so we don't lose page numbers
         text_to_metadata = {}
         docs_to_rerank = []
         
@@ -196,19 +202,34 @@ def retrieve(question: str, filename: str, user_id: str, k: int = 15) -> List[Di
             return_documents=True
         )
 
-        # 4. Format the final output exactly as your app expects it
+        # 4. Format the final output & Apply Score Threshold Check
         retrieved_chunks = []
         for result in rerank_results.results:
-            reranked_text = result.document.text
-            original_metadata = text_to_metadata.get(reranked_text, {})
+            score = result.relevance_score
             
-            retrieved_chunks.append({
-                "text": reranked_text,
-                "page": original_metadata.get("page"),
-                "score": result.relevance_score # This is the new, more accurate score!
-            })
+            # ---------------------------------------------------------
+            # SCORE CHECK: Drop chunks below the relevance threshold
+            # ---------------------------------------------------------
+            if score >= score_threshold:
+                reranked_text = result.document.text
+                original_metadata = text_to_metadata.get(reranked_text, {})
+                
+                retrieved_chunks.append({
+                    "text": reranked_text,
+                    "page": original_metadata.get("page"),
+                    "score": score
+                })
+            else:
+                logger.info(
+                    f"Dropped chunk with low score ({score:.8f}) below threshold ({score_threshold})"
+                )
 
-        logger.info(f"Successfully re-ranked and returned top 3 chunks for {user_id}")
+        # If all chunks were below threshold, return empty list
+        if not retrieved_chunks:
+            logger.info(f"No chunks met relevance threshold ({score_threshold}) for query: '{question}'")
+            return []
+
+        logger.info(f"Successfully re-ranked and returned {len(retrieved_chunks)} valid chunks for {user_id}")
         logger.info(f"RETRIEVED CHUNKS :{retrieved_chunks}")
         return retrieved_chunks
 
