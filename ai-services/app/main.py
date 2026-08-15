@@ -1,6 +1,5 @@
-import os
-from fastapi import HTTPException
-from fastapi import FastAPI, UploadFile, File, Header,WebSocket, WebSocketDisconnect
+import os 
+from fastapi import FastAPI,WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel,Field,validator
-from typing import List, Optional,Literal
+from typing import List
 import os
 import instructor
 from groq import Groq
@@ -146,7 +146,7 @@ async def voice_coach(req: CoachRequest):
         # Call LLM
         coach_response = client.chat.completions.create(
             messages=messages_to_send,
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             temperature=0.6,
             max_tokens=150,
             response_model=AssistantReply,

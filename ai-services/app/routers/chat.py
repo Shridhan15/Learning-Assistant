@@ -1,17 +1,13 @@
 from fastapi import APIRouter, HTTPException,Header
 from pydantic import BaseModel, Field 
-import os
-import asyncio
-import string
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
+import os 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import PydanticOutputParser
-from typing import List, Optional,Literal,Dict,TypedDict,Any
+from typing import List, Optional
 from dotenv import load_dotenv
 load_dotenv()
 import logging
-from langgraph.graph import StateGraph, START, END
 
 
 from app.rag import load_pdf, chunk_text, store_in_pinecone, retrieve
@@ -47,7 +43,7 @@ class SummaryResponse(BaseModel):
     data: SessionSummaryData
 
 chat_model = ChatGroq( 
-    model_name="llama-3.3-70b-versatile",
+    model_name="openai/gpt-oss-120b",
     temperature=0.7,
     max_tokens=500,            
     max_retries=1,

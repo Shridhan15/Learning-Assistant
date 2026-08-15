@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Header, File, UploadFile
 from pydantic import BaseModel
 from app.config import supabase
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone
 from dotenv import load_dotenv
 import os
 import shutil

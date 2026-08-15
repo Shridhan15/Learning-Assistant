@@ -32,7 +32,7 @@ async def generate_learning_roadmap(goal, experience, time_per_day, duration):
     """
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[
             {"role": "system", "content": "You are an expert curriculum designer. You only output valid, minified JSON."},
             {"role": "user", "content": prompt}

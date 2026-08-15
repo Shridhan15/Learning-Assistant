@@ -87,7 +87,7 @@ def generate_podcast_script(mistakes: list) -> str:
                 f"{mistakes_context}"
             )},
         ],
-        model="llama-3.1-8b-instant",  
+        model="openai/gpt-oss-20b",  
         temperature=0.6,  
     )
 

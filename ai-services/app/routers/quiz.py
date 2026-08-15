@@ -82,7 +82,7 @@ async def generate_quiz(req: QuizRequest, user_id: str = Header(...)):
 
     try:
         quiz_data = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             max_retries=3,
             temperature=0.3,
             response_model=QuizResponse,

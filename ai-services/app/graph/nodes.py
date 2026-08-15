@@ -1,22 +1,17 @@
-from fastapi import APIRouter, HTTPException,Header
-from pydantic import BaseModel, Field 
+from fastapi import APIRouter
 import os
-import asyncio
 import string
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.output_parsers import PydanticOutputParser
-from typing import List, Optional,Literal,Dict,TypedDict,Any
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder 
+from typing import Dict,TypedDict,Any
 from dotenv import load_dotenv
 load_dotenv()
-import logging
-from langgraph.graph import StateGraph, START, END
+import logging 
 
 from app.graph.state import TutorState
-from app.rag import load_pdf, chunk_text, store_in_pinecone, retrieve
-from app.services.vision_service import analyze_chat_image 
-from app.services.usage_service import check_and_increment
+from app.rag import  retrieve
+from app.services.vision_service import analyze_chat_image  
 from app.config import supabase
 
 router = APIRouter()
@@ -40,14 +35,14 @@ guard_model = ChatGroq(
 
 safety_model = ChatGroq(
     temperature=0.0,
-    model_name="openai/gpt-oss-safeguard-20b", 
+    model_name="openai/gpt-oss-120b", 
     groq_api_key=os.environ.get("GROQ_API_KEY")
 )
 
 
 
 chat_model = ChatGroq( 
-    model_name="llama-3.3-70b-versatile",
+    model_name="openai/gpt-oss-120b",
     temperature=0.7,
     max_tokens=500,            
     max_retries=1,
@@ -100,7 +95,7 @@ Do not output any reasoning, punctuation, or other text."""),
 
 routing_model = ChatGroq(
     temperature=0.0,
-    model_name="llama-3.1-8b-instant",
+    model_name="openai/gpt-oss-20b",
     groq_api_key=os.environ.get("GROQ_API_KEY")
 )
 
